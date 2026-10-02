@@ -36,8 +36,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if ao := res.AIOverview; ao != nil && ao.Text != "" {
-		fmt.Printf("AI Overview: %s\n\n", ao.Text)
+	if ab := res.AnswerBox; ab != nil && ab.Answer != "" {
+		fmt.Printf("Answer: %s\n\n", ab.Answer)
 	}
 	for _, r := range res.Results {
 		fmt.Printf("%2d. %s\n    %s\n", r.Position, r.Title, r.Link)

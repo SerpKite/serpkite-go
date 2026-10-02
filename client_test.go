@@ -70,7 +70,6 @@ func errReply(status int, code, msg string, hdr ...string) http.HandlerFunc {
 const searchJSON = `{
   "request": {"endpoint": "search", "engine": "google", "q": "best espresso", "country": "us"},
   "results": [{"position": 1, "title": "Espresso", "link": "https://example.com/", "domain": "example.com", "displayed_link": "example.com", "snippet": "…"}],
-  "ai_overview": {"text": "Espresso is…", "references": [{"link": "https://example.com/", "domain": "example.com"}]},
   "related_searches": [{"query": "espresso machine"}],
   "meta": {"request_id": "req_1", "credits_used": 1, "cached": false, "latency_ms": 812}
 }`
@@ -83,21 +82,21 @@ func TestSearch(t *testing.T) {
 	s := newServer(t, jsonReply(200, searchJSON, "X-Credits-Used", "1", "X-Credits-Remaining", "41.5", "X-Cache", "MISS", "X-Request-Id", "req_1", "X-Tokens-Estimate", "321"))
 	c := newTestClient(s)
 	var info ResponseInfo
-	res, err := c.Search(context.Background(), SearchParams{Q: "best espresso", Country: "us", AIOverview: Bool(false), IncludeContent: 2}, CaptureResponse(&info))
+	res, err := c.Search(context.Background(), SearchParams{Q: "best espresso", Country: "us", Autocorrect: Bool(false), IncludeContent: 2}, CaptureResponse(&info))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.Results[0].Title != "Espresso" || res.Results[0].DisplayedLink != "example.com" || res.Meta.CreditsUsed != 1 || res.Meta.LatencyMs != 812 {
 		t.Fatalf("bad decode: %+v", res)
 	}
-	if res.AIOverview == nil || res.AIOverview.References[0].Domain != "example.com" || res.RelatedSearches[0].Query != "espresso machine" {
+	if res.RelatedSearches[0].Query != "espresso machine" {
 		t.Fatalf("bad extras: %+v", res)
 	}
 	r := s.requests()[0]
 	if r.Method != "POST" || r.Path != "/v1/search" || r.Auth != "Bearer skt_live_test" || r.ContentType != "application/json" || !strings.HasPrefix(r.UA, "serpkite-go/") {
 		t.Fatalf("bad request: %+v", r)
 	}
-	want := map[string]any{"q": "best espresso", "country": "us", "ai_overview": false, "include_content": float64(2)}
+	want := map[string]any{"q": "best espresso", "country": "us", "autocorrect": false, "include_content": float64(2)}
 	if len(r.Body) != len(want) {
 		t.Fatalf("body = %v, want %v", r.Body, want)
 	}
@@ -225,7 +224,6 @@ func TestEveryPath(t *testing.T) {
 		func() error { _, err := c.Patents(ctx, q); return err },
 		func() error { _, err := c.Autocomplete(ctx, q); return err },
 		func() error { _, err := c.Lens(ctx, LensParams{URL: "https://example.com/a.jpg"}); return err },
-		func() error { _, err := c.AIMode(ctx, q); return err },
 		func() error { _, err := c.Webpage(ctx, WebpageParams{URL: "https://example.com"}); return err },
 		func() error { _, err := c.Rank(ctx, RankParams{Q: "a", Domain: "example.com", Num: 50}); return err },
 		func() error { _, err := c.Account(ctx); return err },
@@ -239,7 +237,7 @@ func TestEveryPath(t *testing.T) {
 	want := []string{
 		"POST /v1/search", "POST /v1/images", "POST /v1/videos", "POST /v1/news", "POST /v1/maps", "POST /v1/places",
 		"POST /v1/reviews", "POST /v1/shopping", "POST /v1/scholar", "POST /v1/patents", "POST /v1/autocomplete",
-		"POST /v1/lens", "POST /v1/ai-mode", "POST /v1/webpage", "POST /v1/rank", "GET /v1/account", "GET /v1/batches/b1",
+		"POST /v1/lens", "POST /v1/webpage", "POST /v1/rank", "GET /v1/account", "GET /v1/batches/b1",
 	}
 	reqs := s.requests()
 	for i, w := range want {

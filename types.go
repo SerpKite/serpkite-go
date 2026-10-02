@@ -30,7 +30,6 @@ const (
 	EndpointPatents      Endpoint = "patents"
 	EndpointAutocomplete Endpoint = "autocomplete"
 	EndpointLens         Endpoint = "lens"
-	EndpointAIMode       Endpoint = "ai-mode"
 	EndpointWebpage      Endpoint = "webpage"
 )
 
@@ -134,7 +133,7 @@ type RouteStep struct {
 // ── Requests ─────────────────────────────────────────────────────────────
 
 // SearchParams are the parameters of Search, Images, Videos, News, Maps,
-// Places, Shopping, Scholar, Patents, Autocomplete and AIMode.
+// Places, Shopping, Scholar, Patents and Autocomplete.
 type SearchParams struct {
 	// Q is the query (required).
 	Q string `json:"q"`
@@ -165,12 +164,10 @@ type SearchParams struct {
 	// Format is "json" (default), "markdown" or "compact". Prefer
 	// [Client.SearchMarkdown] / [Client.Markdown] for Markdown.
 	Format string `json:"format,omitempty"`
-	// Fields is a comma-separated projection, e.g. "results.title,results.link,ai_overview".
+	// Fields is a comma-separated projection, e.g. "results.title,results.link,answer_box".
 	Fields string `json:"fields,omitempty"`
 	// IncludeContent fetches the top N (0-5) organic pages as Markdown (+1 credit each).
 	IncludeContent int `json:"include_content,omitempty"`
-	// AIOverview defaults to true; set Bool(false) to skip it.
-	AIOverview *bool `json:"ai_overview,omitempty"`
 	// Ads includes sponsored results.
 	Ads bool `json:"ads,omitempty"`
 	// MaxAge accepts a cached result up to this many seconds old (50% of credits on a hit).
@@ -309,21 +306,6 @@ type OrganicResult struct {
 	Sources []string `json:"sources,omitempty"`
 }
 
-// Reference is a cited source (AI Overview references, AI Mode results).
-type Reference struct {
-	Title   string `json:"title,omitempty"`
-	Link    string `json:"link"`
-	Domain  string `json:"domain,omitempty"`
-	Snippet string `json:"snippet,omitempty"`
-}
-
-// AIOverview is Google's AI Overview block.
-type AIOverview struct {
-	Text       string      `json:"text,omitempty"`
-	Markdown   string      `json:"markdown,omitempty"`
-	References []Reference `json:"references,omitempty"`
-}
-
 // AnswerBox is the featured answer.
 type AnswerBox struct {
 	Title              string   `json:"title,omitempty"`
@@ -360,10 +342,8 @@ type RelatedSearch struct {
 
 // SearchResponse is returned by [Client.Search].
 type SearchResponse struct {
-	Request RequestEcho     `json:"request"`
-	Results []OrganicResult `json:"results"`
-	// AIOverview is nil when Google showed none.
-	AIOverview      *AIOverview     `json:"ai_overview"`
+	Request         RequestEcho     `json:"request"`
+	Results         []OrganicResult `json:"results"`
 	AnswerBox       *AnswerBox      `json:"answer_box,omitempty"`
 	KnowledgeGraph  *KnowledgeGraph `json:"knowledge_graph,omitempty"`
 	Ads             []OrganicResult `json:"ads,omitempty"`
@@ -571,7 +551,7 @@ type PatentsResponse struct {
 	Meta    Meta           `json:"meta"`
 }
 
-// ── Autocomplete, lens, AI mode, webpage ─────────────────────────────────
+// ── Autocomplete, lens, webpage ──────────────────────────────────────────
 
 // Suggestion is one autocomplete suggestion.
 type Suggestion struct {
@@ -601,16 +581,6 @@ type LensResponse struct {
 	Request RequestEcho  `json:"request"`
 	Results []LensResult `json:"results"`
 	Meta    Meta         `json:"meta"`
-}
-
-// AIModeResponse is returned by [Client.AIMode].
-type AIModeResponse struct {
-	Request  RequestEcho `json:"request"`
-	Answer   string      `json:"answer"`
-	Markdown string      `json:"markdown,omitempty"`
-	// Results are the cited sources.
-	Results []Reference `json:"results"`
-	Meta    Meta        `json:"meta"`
 }
 
 // PageMetadata describes a fetched page.

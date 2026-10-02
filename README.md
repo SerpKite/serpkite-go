@@ -92,7 +92,7 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 
 | Method | Endpoint | Params | Returns |
 | --- | --- | --- | --- |
-| `Search` | `POST /v1/search` | `SearchParams` | `*SearchResponse` (`Results`, `AIOverview`, `AnswerBox`, `KnowledgeGraph`, `PeopleAlsoAsk`, `RelatedSearches`, `TopStories`, `Places`, `Ads`) |
+| `Search` | `POST /v1/search` | `SearchParams` | `*SearchResponse` (`Results`, `AnswerBox`, `KnowledgeGraph`, `PeopleAlsoAsk`, `RelatedSearches`, `TopStories`, `Places`, `Ads`) |
 | `SearchMarkdown` | `POST /v1/search` | `SearchParams` | `string` |
 | `Markdown` | any vertical | `Endpoint`, params | `string` |
 | `Images` | `POST /v1/images` | `SearchParams` | `*ImagesResponse` |
@@ -106,7 +106,6 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `Patents` | `POST /v1/patents` | `SearchParams` | `*PatentsResponse` |
 | `Autocomplete` | `POST /v1/autocomplete` | `SearchParams` | `*AutocompleteResponse` (`Results[i].Value`) |
 | `Lens` | `POST /v1/lens` | `LensParams` (`URL` of an image) | `*LensResponse` |
-| `AIMode` | `POST /v1/ai-mode` | `SearchParams` | `*AIModeResponse` (`Answer`, `Markdown`, cited `Results`) |
 | `Webpage` | `POST /v1/webpage` | `WebpageParams` (`URL`, `IncludeHTML`) | `*WebpageResponse` (`Markdown`, `Text`, `Metadata`) |
 | `Rank` | `POST /v1/rank` | `RankParams` (`Q`, `Domain`, `Num`: 10\|20\|30\|50\|100) | `*RankResponse` (`Position` or nil, `Matches`, `Checked`) |
 | `Account` | `GET /v1/account` | none | `*Account` (`Balance`, `Plan`, `RateLimitRPS`, `Month`, …) |
@@ -118,10 +117,10 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 `SearchParams` fields: `Q` (required), `Country` (default `us`), `Language` (default `en`),
 `Location`, `UULE`, `LL`, `Num` (10, or 100 for the depth bundle), `Page` (1-10), `Time`
 (`hour`|`day`|`week`|`month`|`year`), `TBS`, `Device`, `Safe`, `Autocorrect`, `Format`, `Fields`,
-`IncludeContent` (0-5), `AIOverview`, `Ads`, `MaxAge`, `Engine` (see
+`IncludeContent` (0-5), `Ads`, `MaxAge`, `Engine` (see
 [Search engines & fallback](#search-engines--fallback)). Zero values mean "API default".
-`Autocorrect` and `AIOverview` default to true on the server, so they are `*bool`: pass
-`serpkite.Bool(false)` to turn them off.
+`Autocorrect` defaults to true on the server, so it is a `*bool`: pass `serpkite.Bool(false)` to
+turn it off.
 
 ### Examples
 
@@ -133,8 +132,8 @@ news, err := c.News(ctx, serpkite.SearchParams{Q: "EZB Zinsen", Country: "de", L
 deep, err := c.Search(ctx, serpkite.SearchParams{Q: "rust async runtime comparison", IncludeContent: 3})
 fmt.Println(deep.Results[0].Content)
 
-// Skip the AI Overview
-res, err := c.Search(ctx, serpkite.SearchParams{Q: "espresso", AIOverview: serpkite.Bool(false)})
+// Search the literal query, without autocorrect
+res, err := c.Search(ctx, serpkite.SearchParams{Q: "espresso", Autocorrect: serpkite.Bool(false)})
 
 // Markdown from any vertical
 md, err := c.Markdown(ctx, serpkite.EndpointNews, serpkite.SearchParams{Q: "espresso"})
@@ -212,7 +211,7 @@ Batch jobs cost half price. Submit 1-100 requests for one endpoint; each request
 
 ```go
 job, err := c.Batches.Create(ctx, serpkite.BatchCreateParams{
-	Endpoint:   serpkite.EndpointSearch, // or EndpointNews, EndpointAIMode, EndpointWebpage, …
+	Endpoint:   serpkite.EndpointSearch, // or EndpointNews, EndpointWebpage, …
 	Requests:   []any{serpkite.SearchParams{Q: "a"}, serpkite.SearchParams{Q: "b"}},
 	WebhookURL: "https://example.com/hooks/serpkite", // optional
 })
@@ -296,7 +295,7 @@ The request and response structs in `types.go` are **hand-written** from the Ope
 (`backend/api/serp-api.yaml`) rather than generated. `oapi-codegen` produces pointers for every
 optional field (`*string` for `Country`), `Id`/`ImageUrl`-style names and union wrapper types for
 the batch entries, which makes for an awkward API. Hand-written structs use plain values with
-`omitempty`, Go initialisms (`URL`, `ID`, `AIOverview`) and `*bool` only where the server default is
+`omitempty`, Go initialisms (`URL`, `ID`, `ImageURL`) and `*bool` only where the server default is
 true. `contract_test.go` keeps them honest: it loads the contract and fails when a struct is
 missing a property, has one the contract does not define, or marks a required key `omitempty`.
 

@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
@@ -158,8 +158,8 @@ func WithIdempotencyKey(key string) RequestOption {
 
 // ── Verticals ────────────────────────────────────────────────────────────
 
-// Search runs a Google web search: organic results, AI Overview, answer box,
-// knowledge graph, people also ask, top stories, local pack.
+// Search runs a Google web search: organic results, answer box, knowledge
+// graph, people also ask, top stories, local pack.
 func (c *Client) Search(ctx context.Context, p SearchParams, opts ...RequestOption) (*SearchResponse, error) {
 	return post[SearchResponse](ctx, c, "/v1/search", p, opts)
 }
@@ -235,11 +235,6 @@ func (c *Client) Autocomplete(ctx context.Context, p SearchParams, opts ...Reque
 // Lens returns Google Lens visual matches for an image URL.
 func (c *Client) Lens(ctx context.Context, p LensParams, opts ...RequestOption) (*LensResponse, error) {
 	return post[LensResponse](ctx, c, "/v1/lens", p, opts)
-}
-
-// AIMode returns a Google AI Mode answer with cited sources.
-func (c *Client) AIMode(ctx context.Context, p SearchParams, opts ...RequestOption) (*AIModeResponse, error) {
-	return post[AIModeResponse](ctx, c, "/v1/ai-mode", p, opts)
 }
 
 // Webpage fetches a public URL and returns clean Markdown, text and metadata.
