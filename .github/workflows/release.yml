@@ -1,0 +1,37 @@
+# Mirrored from the SerpKite monorepo (sdks/go); edits here are overwritten.
+# The monorepo's sdk-mirror workflow pushes tag vX.Y.Z here. The tag is the Go
+# release; this tests it, warms the module proxy and makes a GitHub release.
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # GitHub release
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Tag matches Version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: grep -q "^const Version = \"${TAG#v}\"" client.go
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: Announce to the module proxy
+        env:
+          TAG: ${{ github.ref_name }}
+        # From outside the module: inside it, the main module can't be queried by version.
+        run: cd "$(mktemp -d)" && GOPROXY=https://proxy.golang.org go list -m "github.com/serpkite/serpkite-go@${TAG}"
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "$TAG"

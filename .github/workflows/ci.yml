@@ -1,0 +1,24 @@
+# Mirrored from the SerpKite monorepo (sdks/go); edits here are overwritten.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - run: go mod tidy -diff
+      - run: go vet ./...
+      # contract_test.go checks the hand-written types against openapi/serp-api.yaml.
+      - run: go test -race ./...
