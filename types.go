@@ -174,6 +174,22 @@ type SearchParams struct {
 	// Engine names the search providers that may answer; nil is Google only.
 	// See [Engine] and [Engines].
 	Engine Engine `json:"engine,omitempty"`
+	// IncludeDomains keeps only results from these domains (search, news,
+	// images, videos; at most 20): a host ("example.com", subdomains match), a
+	// host with a path prefix ("github.com/org") or a TLD (".gov"). Not with
+	// [EngineConsensus].
+	IncludeDomains []string `json:"include_domains,omitempty"`
+	// ExcludeDomains drops results from these domains (search, news, images, videos).
+	ExcludeDomains []string `json:"exclude_domains,omitempty"`
+	// BoostDomains moves results from these domains to the top (search, news).
+	BoostDomains []string `json:"boost_domains,omitempty"`
+	// StartDate and EndDate (YYYY-MM-DD) bound the publish date (search, news,
+	// images, videos). They can't be combined with Time or TBS.
+	StartDate string `json:"start_date,omitempty"`
+	EndDate   string `json:"end_date,omitempty"`
+	// Highlights returns query-ranked passages of the pages read by
+	// IncludeContent instead of the whole page (search only; no extra credits).
+	Highlights bool `json:"highlights,omitempty"`
 }
 
 // ReviewsParams are the parameters of [Client.Reviews]. Set one of PlaceID, CID or FID.
@@ -203,7 +219,14 @@ type WebpageParams struct {
 	Format string `json:"format,omitempty"`
 	// IncludeHTML also returns the raw HTML.
 	IncludeHTML bool `json:"include_html,omitempty"`
-	MaxAge      int  `json:"max_age,omitempty"`
+	// IncludeLinks also returns the page's outbound links ([WebpageResponse].Links).
+	IncludeLinks bool `json:"include_links,omitempty"`
+	// IncludeImages also returns the page's image URLs ([WebpageResponse].ImageLinks).
+	IncludeImages bool `json:"include_images,omitempty"`
+	// Country fetches the page through an exit in this country (ISO 3166-1
+	// alpha-2, e.g. "de") for geo-dependent pages.
+	Country string `json:"country,omitempty"`
+	MaxAge  int    `json:"max_age,omitempty"`
 }
 
 // RankParams are the parameters of [Client.Rank].
@@ -239,21 +262,33 @@ type Meta struct {
 	LatencyMs    int    `json:"latency_ms,omitempty"`
 }
 
+// Highlight is a query-relevant passage of a page, verbatim.
+type Highlight struct {
+	Text string `json:"text"`
+	// Score is the relevance to the query (BM25; higher is better, comparable within one response).
+	Score float64 `json:"score"`
+	// Heading is the section heading path the passage sits under.
+	Heading string `json:"heading,omitempty"`
+}
+
 // RequestEcho is the normalised request that produced a response (defaults filled in).
 type RequestEcho struct {
 	Endpoint string `json:"endpoint"`
 	// Engine is the engine policy as asked (google, auto, one provider or a list).
-	Engine         Engine `json:"engine"`
-	Q              string `json:"q,omitempty"`
-	URL            string `json:"url,omitempty"`
-	Country        string `json:"country,omitempty"`
-	Language       string `json:"language,omitempty"`
-	Location       string `json:"location,omitempty"`
-	Num            int    `json:"num,omitempty"`
-	Page           int    `json:"page,omitempty"`
-	Device         string `json:"device,omitempty"`
-	Autocorrect    *bool  `json:"autocorrect,omitempty"`
-	TBS            string `json:"tbs,omitempty"`
+	Engine      Engine `json:"engine"`
+	Q           string `json:"q,omitempty"`
+	URL         string `json:"url,omitempty"`
+	Country     string `json:"country,omitempty"`
+	Language    string `json:"language,omitempty"`
+	Location    string `json:"location,omitempty"`
+	Num         int    `json:"num,omitempty"`
+	Page        int    `json:"page,omitempty"`
+	Device      string `json:"device,omitempty"`
+	Autocorrect *bool  `json:"autocorrect,omitempty"`
+	TBS         string `json:"tbs,omitempty"`
+	// StartDate and EndDate echo the date range (TBS is then omitted).
+	StartDate      string `json:"start_date,omitempty"`
+	EndDate        string `json:"end_date,omitempty"`
 	Safe           string `json:"safe,omitempty"`
 	PlaceID        string `json:"place_id,omitempty"`
 	CID            string `json:"cid,omitempty"`
@@ -261,6 +296,12 @@ type RequestEcho struct {
 	Sort           string `json:"sort,omitempty"`
 	IncludeContent int    `json:"include_content,omitempty"`
 	Format         string `json:"format,omitempty"`
+	// IncludeDomains, ExcludeDomains and BoostDomains echo the normalised
+	// domain filters (TLDs keep their leading dot).
+	IncludeDomains []string `json:"include_domains,omitempty"`
+	ExcludeDomains []string `json:"exclude_domains,omitempty"`
+	BoostDomains   []string `json:"boost_domains,omitempty"`
+	Highlights     bool     `json:"highlights,omitempty"`
 }
 
 // ── Search ───────────────────────────────────────────────────────────────
@@ -287,8 +328,13 @@ type OrganicResult struct {
 	Attributes    map[string]string `json:"attributes,omitempty"`
 	Rating        float64           `json:"rating,omitempty"`
 	RatingCount   int               `json:"rating_count,omitempty"`
+	// PublishedAt is Date as an ISO 8601 date or date-time when it parses.
+	PublishedAt string `json:"published_at,omitempty"`
 	// Content is the page Markdown when IncludeContent covered this result.
 	Content string `json:"content,omitempty"`
+	// Highlights are query-ranked passages of the fetched page, best first
+	// ([SearchParams].Highlights; instead of Content).
+	Highlights []Highlight `json:"highlights,omitempty"`
 	// Sources lists the providers that returned this result (EngineConsensus only).
 	Sources []string `json:"sources,omitempty"`
 }
@@ -375,6 +421,8 @@ type VideoResult struct {
 	Source   string `json:"source,omitempty"`
 	Channel  string `json:"channel,omitempty"`
 	Date     string `json:"date,omitempty"`
+	// PublishedAt is Date as ISO 8601 when it parses.
+	PublishedAt string `json:"published_at,omitempty"`
 }
 
 // VideosResponse is returned by [Client.Videos].
@@ -392,8 +440,10 @@ type NewsResult struct {
 	Domain   string `json:"domain,omitempty"`
 	Snippet  string `json:"snippet,omitempty"`
 	Date     string `json:"date,omitempty"`
-	Source   string `json:"source,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
+	// PublishedAt is Date as ISO 8601 when it parses.
+	PublishedAt string `json:"published_at,omitempty"`
+	Source      string `json:"source,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
 }
 
 // NewsResponse is returned by [Client.News].
@@ -562,6 +612,18 @@ type PageMetadata struct {
 	Image         string `json:"image,omitempty"`
 	PublishedTime string `json:"published_time,omitempty"`
 	Author        string `json:"author,omitempty"`
+	// ContentType is the page's media type ("text/html", "application/pdf").
+	ContentType string `json:"content_type,omitempty"`
+	// Pages is the page count of a PDF.
+	Pages int `json:"pages,omitempty"`
+}
+
+// PageLink is an outbound link of a page.
+type PageLink struct {
+	// URL is absolute.
+	URL string `json:"url"`
+	// Text is the anchor text.
+	Text string `json:"text,omitempty"`
 }
 
 // WebpageResponse is returned by [Client.Webpage].
@@ -574,7 +636,11 @@ type WebpageResponse struct {
 	Text       string       `json:"text,omitempty"`
 	HTML       string       `json:"html,omitempty"`
 	Metadata   PageMetadata `json:"metadata"`
-	Meta       Meta         `json:"meta"`
+	// Links are the outbound links ([WebpageParams].IncludeLinks).
+	Links []PageLink `json:"links,omitempty"`
+	// ImageLinks are the image URLs ([WebpageParams].IncludeImages).
+	ImageLinks []string `json:"image_links,omitempty"`
+	Meta       Meta     `json:"meta"`
 }
 
 // ── Rank and account ─────────────────────────────────────────────────────

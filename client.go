@@ -48,6 +48,8 @@ type Client struct {
 
 	// Batches queues and polls half-price batch jobs.
 	Batches *BatchesService
+	// Monitors manages scheduled searches and watched pages that report what is new (webhook and run history).
+	Monitors *MonitorsService
 }
 
 // Option configures a [Client].
@@ -95,6 +97,7 @@ func NewClient(opts ...Option) *Client {
 		c.httpClient = &http.Client{}
 	}
 	c.Batches = &BatchesService{c: c}
+	c.Monitors = &MonitorsService{c: c}
 	return c
 }
 
@@ -358,6 +361,9 @@ type call struct {
 	out           any
 	opts          []RequestOption
 	rateLimitOnly bool
+	// minTimeout raises the client's per-attempt timeout for slow calls
+	// (extract); 0 = the client's.
+	minTimeout time.Duration
 }
 
 func post[T any](ctx context.Context, c *Client, path string, body any, opts []RequestOption) (*T, error) {
@@ -404,7 +410,7 @@ func (c *Client) do(ctx context.Context, cl call) (text string, isJSON bool, err
 	}
 	for attempt := 0; ; attempt++ {
 		canRetry := attempt < c.maxRetries
-		status, header, body, err := c.once(ctx, cl.method, cl.path, payload, o.header)
+		status, header, body, err := c.once(ctx, cl.method, cl.path, payload, o.header, cl.minTimeout)
 		if err != nil {
 			if ctx.Err() != nil {
 				return "", false, ctx.Err()
@@ -445,11 +451,11 @@ func (c *Client) do(ctx context.Context, cl call) (text string, isJSON bool, err
 
 // once performs a single attempt. A transport failure is returned as an *Error
 // with Status 0 (code connection_error or timeout).
-func (c *Client) once(ctx context.Context, method, path string, payload []byte, extra http.Header) (int, http.Header, []byte, error) {
+func (c *Client) once(ctx context.Context, method, path string, payload []byte, extra http.Header, minTimeout time.Duration) (int, http.Header, []byte, error) {
 	actx := ctx
 	if c.timeout > 0 {
 		var cancel context.CancelFunc
-		actx, cancel = context.WithTimeout(ctx, c.timeout)
+		actx, cancel = context.WithTimeout(ctx, max(c.timeout, minTimeout))
 		defer cancel()
 	}
 	var rd io.Reader

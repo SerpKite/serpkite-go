@@ -17,6 +17,7 @@ import (
 type seen struct {
 	Method, Path, Auth, ContentType, UA string
 	Body                                map[string]any
+	Query                               string
 }
 
 // server replies with the handlers in order (the last one repeats) and records requests.
@@ -34,7 +35,7 @@ func newServer(t *testing.T, handlers ...http.HandlerFunc) *server {
 		var body map[string]any
 		_ = json.Unmarshal(b, &body)
 		s.mu.Lock()
-		s.reqs = append(s.reqs, seen{r.Method, r.URL.Path, r.Header.Get("Authorization"), r.Header.Get("Content-Type"), r.Header.Get("User-Agent"), body})
+		s.reqs = append(s.reqs, seen{r.Method, r.URL.Path, r.Header.Get("Authorization"), r.Header.Get("Content-Type"), r.Header.Get("User-Agent"), body, r.URL.RawQuery})
 		i := min(len(s.reqs)-1, len(handlers)-1)
 		s.mu.Unlock()
 		handlers[i](w, r)
@@ -268,7 +269,7 @@ func TestMarkdown(t *testing.T) {
 	if err != nil || got != md {
 		t.Fatalf("Markdown = %q, %v", got, err)
 	}
-	page, err := c.Webpage(ctx, WebpageParams{URL: "https://example.com", Format: FormatMarkdown})
+	page, err := c.Webpage(ctx, WebpageParams{URL: "https://example.com", Format: FormatMarkdown, Country: "de"})
 	if err != nil || page.Markdown != md || page.URL != "https://example.com" {
 		t.Fatalf("Webpage markdown = %+v, %v", page, err)
 	}
@@ -279,7 +280,7 @@ func TestMarkdown(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 	reqs := s.requests()
-	if reqs[0].Body["format"] != "markdown" || reqs[1].Body["format"] != "markdown" || reqs[1].Body["country"] != "de" || reqs[1].Path != "/v1/news" {
+	if reqs[0].Body["format"] != "markdown" || reqs[1].Body["format"] != "markdown" || reqs[1].Body["country"] != "de" || reqs[1].Path != "/v1/news" || reqs[2].Body["country"] != "de" {
 		t.Fatalf("bad requests: %+v", reqs)
 	}
 }
@@ -514,5 +515,95 @@ func TestBatchEntryRoundTrip(t *testing.T) {
 	out, _ := json.Marshal(r)
 	if string(out) != in {
 		t.Fatalf("round trip = %s", out)
+	}
+}
+
+func TestWebpageLinksAndPDF(t *testing.T) {
+	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "webpage", "engine": "http", "url": "https://example.com/a.pdf", "country": "de"},
+  "url": "https://example.com/a.pdf", "status_code": 200, "markdown": "<!-- page 1 -->\nHello",
+  "metadata": {"title": "Paper", "content_type": "application/pdf", "pages": 3},
+  "links": [{"url": "https://example.com/docs", "text": "Docs"}], "image_links": ["https://example.com/logo.png"],
+  "meta": {"request_id": "r", "credits_used": 1, "cached": false}}`))
+	c := newTestClient(s)
+	page, err := c.Webpage(context.Background(), WebpageParams{URL: "https://example.com/a.pdf", IncludeLinks: true, IncludeImages: true, Country: "de"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Metadata.Pages != 3 || page.Metadata.ContentType != "application/pdf" || len(page.Links) != 1 || page.Links[0].Text != "Docs" || len(page.ImageLinks) != 1 {
+		t.Fatalf("page = %+v", page)
+	}
+	b := s.requests()[0].Body
+	if b["include_links"] != true || b["include_images"] != true || b["country"] != "de" {
+		t.Fatalf("body = %v", b)
+	}
+}
+
+func TestSearchControls(t *testing.T) {
+	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "search", "engine": "google", "q": "espresso", "include_domains": ["github.com"], "highlights": true},
+  "results": [{"position": 1, "title": "t", "link": "https://github.com/x", "published_at": "2026-09-30", "highlights": [{"text": "passage", "score": 1.5, "heading": "Intro"}]}],
+  "related_searches": [], "meta": {"request_id": "r", "credits_used": 2, "cached": false}}`))
+	c := newTestClient(s)
+	res, err := c.Search(context.Background(), SearchParams{Q: "espresso", IncludeDomains: []string{"github.com"}, ExcludeDomains: []string{".gov"},
+		BoostDomains: []string{"arxiv.org"}, StartDate: "2026-01-01", EndDate: "2026-03-31", IncludeContent: 1, Highlights: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := res.Results[0]
+	if o.PublishedAt != "2026-09-30" || len(o.Highlights) != 1 || o.Highlights[0].Heading != "Intro" || !res.Request.Highlights || res.Request.IncludeDomains[0] != "github.com" {
+		t.Fatalf("res = %+v", res)
+	}
+	b := s.requests()[0].Body
+	if b["start_date"] != "2026-01-01" || b["end_date"] != "2026-03-31" || b["highlights"] != true ||
+		!reflect.DeepEqual(b["include_domains"], []any{"github.com"}) || !reflect.DeepEqual(b["exclude_domains"], []any{".gov"}) || !reflect.DeepEqual(b["boost_domains"], []any{"arxiv.org"}) {
+		t.Fatalf("body = %v", b)
+	}
+}
+
+func TestMap(t *testing.T) {
+	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "map", "url": "https://docs.example.com/", "limit": 50, "search": "install"},
+  "results": [{"url": "https://docs.example.com/install", "lastmod": "2026-09-01", "source": "sitemap"}],
+  "meta": {"request_id": "r", "credits_used": 1, "count": 1}}`))
+	c := newTestClient(s)
+	res, err := c.Map(context.Background(), MapParams{URL: "https://docs.example.com/", Search: "install", Limit: 50, IncludePaths: []string{"^/docs/"}, Sitemap: SitemapOnly})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Results) != 1 || res.Results[0].Source != "sitemap" || res.Meta.Count != 1 || res.Request.Search != "install" {
+		t.Fatalf("res = %+v", res)
+	}
+	r := s.requests()[0]
+	if r.Path != "/v1/map" || r.Body["sitemap"] != "only" || !reflect.DeepEqual(r.Body["include_paths"], []any{"^/docs/"}) {
+		t.Fatalf("req = %+v", r)
+	}
+}
+
+func TestExtract(t *testing.T) {
+	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "extract", "urls": ["https://a.example.com/x", "ftp://x"], "format": "markdown"},
+  "results": [{"url": "https://a.example.com/x", "cached": false, "markdown": "# X", "highlights": [{"text": "passage", "score": 2.5}]}],
+  "failed": [{"url": "ftp://x", "error": {"code": "invalid_request", "message": "bad url"}}],
+  "meta": {"request_id": "r", "credits_used": 1, "succeeded": 1, "failed": 1}}`))
+	c := newTestClient(s)
+	res, err := c.Extract(context.Background(), ExtractParams{URLs: []string{"https://a.example.com/x", "ftp://x"}, Query: "x", Highlights: 1, Timeout: 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Results) != 1 || res.Results[0].Highlights[0].Score != 2.5 || res.Failed[0].Error.Code != "invalid_request" || res.Meta.Failed != 1 {
+		t.Fatalf("res = %+v", res)
+	}
+	b := s.requests()[0].Body
+	if b["query"] != "x" || b["highlights"] != float64(1) || b["timeout"] != float64(30) || len(b["urls"].([]any)) != 2 {
+		t.Fatalf("body = %v", b)
+	}
+}
+
+// A lost extract response was still billed: 5xx is not retried.
+func TestExtractIsNotRetried(t *testing.T) {
+	s := newServer(t, jsonReply(503, `{"error":{"code":"upstream_error","message":"boom","request_id":"r"}}`))
+	c := newTestClient(s, WithMaxRetries(2))
+	if _, err := c.Extract(context.Background(), ExtractParams{URLs: []string{"https://a.example.com/x"}}); err == nil {
+		t.Fatal("want an error")
+	}
+	if n := len(s.requests()); n != 1 {
+		t.Fatalf("extract sent %d times", n)
 	}
 }

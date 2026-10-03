@@ -14,7 +14,9 @@ import (
 // [VerifyWebhook].
 const WebhookTolerance = 5 * time.Minute
 
-// VerifyWebhook checks a batch webhook delivery: X-SerpKite-Signature must be
+// VerifyWebhook checks a webhook delivery (every event: batch.completed,
+// crawl.completed, monitor.results; the event type is in the X-SerpKite-Event
+// header): X-SerpKite-Signature must be
 // "v1=" + hex(HMAC-SHA256(secret, "<X-SerpKite-Timestamp>.<raw body>")) and
 // the timestamp within [WebhookTolerance] of now. Pass the raw request body
 // exactly as received.

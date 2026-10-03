@@ -107,6 +107,13 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `Autocomplete` | `POST /v1/autocomplete` | `SearchParams` | `*AutocompleteResponse` (`Results[i].Value`) |
 | `Webpage` | `POST /v1/webpage` | `WebpageParams` (`URL`, `IncludeHTML`) | `*WebpageResponse` (`Markdown`, `Text`, `Metadata`) |
 | `Rank` | `POST /v1/rank` | `RankParams` (`Q`, `Domain`, `Num`: 10\|20\|30\|50\|100) | `*RankResponse` (`Position` or nil, `Matches`, `Checked`) |
+| `Extract` | `POST /v1/extract` | `ExtractParams` (`URLs` ≤ 20, `Format`, `Query`, `Highlights`, …) | `*ExtractResponse` (`Results`, `Failed`) |
+| `Map` | `POST /v1/map` | `MapParams` (`URL`, `Search`, `Limit`, `Sitemap`, path filters) | `*MapResponse` (`Results[i].URL`) |
+| `Crawl` | `POST /v1/crawl` | `CrawlParams` (`URL`, `Limit` ≤ 1000, `MaxDepth` ≤ 10, …) | `*TaskCreated` (`202`) |
+| `GetCrawl` / `CancelCrawl` | `GET` / `DELETE /v1/crawl/{id}` | id | `*CrawlTask` / `*TaskCancelResponse` |
+| `WaitForCrawl` | polls `GET /v1/crawl/{id}` | id, `WaitOptions` | `*CrawlTask` (completed, failed or canceled) |
+| `Monitors.Create/List/Get/Update/Delete/Run` | `/v1/monitors…` | `MonitorCreateParams`, `MonitorUpdateParams` | `*Monitor`, `[]Monitor` |
+| `Monitors.Runs` | `GET /v1/monitors/{id}/runs` | id, `*MonitorRunsParams` (`Limit`, `Before`) | `*MonitorRunList` (`Results`, `NextBefore`) |
 | `Account` | `GET /v1/account` | none | `*Account` (`Balance`, `Plan`, `RateLimitRPS`, `Month`, …) |
 | `Batches.Create` | `POST /v1/batches` | `BatchCreateParams` | `*BatchCreateResponse` |
 | `Batches.Get` | `GET /v1/batches/{id}` | id | `*Batch` |
@@ -174,6 +181,26 @@ res, err = c.Search(ctx, serpkite.SearchParams{Q: "espresso", MaxAge: 3600})
 With `Fields` the response contains only the requested keys; the other struct fields stay zero.
 `Format: "compact"` is best read with `Do` into a `map[string]any`.
 
+## Search controls
+
+Domain filters and date ranges work on search, news, images and videos; `BoostDomains` on search
+and news; `Highlights` on search with `IncludeContent`. None of them costs extra credits.
+
+```go
+res, err := c.Search(ctx, serpkite.SearchParams{
+	Q:              "connection pooling",
+	IncludeDomains: []string{"postgresql.org", "github.com/pgbouncer", ".edu"}, // host, path prefix or TLD (≤ 20)
+	ExcludeDomains: []string{"pinterest.com"},
+	BoostDomains:   []string{"postgresql.org"}, // to the top, keeping the rest
+	StartDate:      "2026-01-01",               // YYYY-MM-DD, EndDate too
+	IncludeContent: 3,
+	Highlights:     true, // 3 query-ranked passages per page instead of the whole page
+})
+for _, r := range res.Results {
+	fmt.Println(r.Position, r.PublishedAt, len(r.Highlights))
+}
+```
+
 ## Search engines & fallback
 
 By default every request is answered by Google only (a nil `Engine`); SerpKite already fails over
@@ -203,6 +230,96 @@ news, err := c.News(ctx, serpkite.SearchParams{Q: "espresso", Engine: serpkite.E
 - `Meta.Engine` names the provider that answered; `Meta.Route` (`[]RouteStep`) lists each attempt
   and its `Outcome`. `Request.Engine` echoes what you asked for.
 - Credits (`Meta.CreditsUsed`, `X-Credits-Used`) follow the answering provider's price.
+
+## Map and extract
+
+```go
+// The URLs of a site (1 credit): sitemaps + start page, canonicalised and deduplicated
+site, err := c.Map(ctx, serpkite.MapParams{URL: "https://docs.example.com/", Search: "install", IncludePaths: []string{"^/guides/"}})
+
+// Up to 20 URLs (HTML or PDF) as Markdown in one call: 1 credit per URL that came back
+pages, err := c.Extract(ctx, serpkite.ExtractParams{URLs: []string{site.Results[0].URL}, Query: "install", Highlights: 3})
+for _, f := range pages.Failed { // not charged
+	fmt.Println("failed", f.URL, f.Error.Code)
+}
+```
+
+## Crawl
+
+```go
+task, err := c.Crawl(ctx, serpkite.CrawlParams{
+	URL:          "https://docs.example.com/",
+	Limit:        200,              // up to 1000 pages
+	MaxDepth:     serpkite.Int(3), // up to 10; Int(0) reads only URL
+	IncludePaths: []string{"^/guides/"},
+	Sitemap:      "include",        // include (default) | only | skip
+	Query:        "authentication", // read the most relevant pages first
+})
+if err != nil {
+	log.Fatal(err)
+}
+done, err := c.WaitForCrawl(ctx, task.ID) // completed, failed or canceled
+if err == nil && done.Result != nil {
+	for _, p := range done.Result.Pages {
+		fmt.Println(p.URL, len(p.Markdown))
+	}
+	fmt.Println(done.Result.Stats.Stopped) // done | limit | time_limit | size_limit | too_many_failures | canceled
+}
+```
+
+- `Crawl` reserves `Limit` credits and charges 1 per page read (0.5 from cache); the rest is
+  refunded. It is only retried on 429, so a lost response never starts a second crawl.
+- `WaitForCrawl(ctx, id, serpkite.WaitOptions{…})` polls every 2 s (×1.5, up to 15 s; default
+  timeout 35 minutes). A failed or canceled crawl is returned without an error; on timeout it
+  returns the last poll and an `*Error` with code `timeout`.
+- `CancelCrawl` refunds a queued crawl; a running one stops at its next checkpoint (`canceling`).
+- With `WebhookURL` the crawl ends with a signed `crawl.completed` delivery
+  (`serpkite.TaskCompletedEvent`; decode `Result` with `DecodeResult`). A result over 4 MB arrives
+  with `ResultOmitted` set: fetch it with `GetCrawl`.
+
+## Monitors
+
+```go
+m, err := c.Monitors.Create(ctx, serpkite.MonitorCreateParams{
+	Q:          "ai agents",
+	Endpoint:   "news",
+	Interval:   serpkite.IntervalHourly, // or IntervalSeconds (3600-2592000)
+	WebhookURL: "https://example.com/hooks/serpkite", // optional
+})
+_, err = c.Monitors.Run(ctx, m.ID) // due within ~30 s
+_, err = c.Monitors.Update(ctx, m.ID, serpkite.MonitorUpdateParams{Active: serpkite.Bool(false)})
+
+// Run history, newest first (new results kept 24 h)
+p := &serpkite.MonitorRunsParams{Limit: 20}
+for {
+	page, err := c.Monitors.Runs(ctx, m.ID, p)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, run := range page.Results {
+		fmt.Println(run.Status, run.NewResults) // run.Results: []json.RawMessage
+	}
+	if page.NextBefore == nil {
+		break
+	}
+	p.Before = *page.NextBefore
+}
+
+// Watch a page for content changes (1 credit per check); Metadata is echoed in webhooks
+w, err := c.Monitors.Create(ctx, serpkite.MonitorCreateParams{
+	Endpoint: string(serpkite.EndpointWebpage),
+	URL:      "https://example.com/pricing",
+	Metadata: map[string]any{"customer": "acme"},
+})
+_, err = c.Monitors.Update(ctx, w.ID, serpkite.MonitorUpdateParams{Metadata: serpkite.ClearMetadata})
+err = c.Monitors.Delete(ctx, w.ID)
+```
+
+Each search run costs what its search costs (1 credit per 10 results, `num` 100 is 7; empty and failed runs are free) and reports only results
+it hasn't seen before: as a signed `monitor.results` webhook (`serpkite.MonitorResultsEvent`; dedupe
+retries on `RunID`) and in `Runs`. A monitor pauses itself after 10 failed runs in a row; `Update`
+with `Active: serpkite.Bool(true)` resumes it, and `WebhookURL: serpkite.String("")` removes the
+webhook.
 
 ## Batches
 
@@ -285,12 +402,12 @@ searches are refunded, so they never cost credits.
 Requests are retried up to `WithMaxRetries` times (default 2) on `429`, `5xx`, network errors and
 timeouts, with exponential backoff (`500 ms · 2^attempt`, capped at 8 s) and jitter. A `Retry-After`
 header (seconds or HTTP date, capped at 60 s) takes precedence. Other `4xx` errors are never
-retried. `Batches.Create` retries only on `429`, so a lost response can never queue (and bill) the
-same requests twice.
+retried. `Batches.Create`, `Crawl`, `Monitors.Create` and `Monitors.Run` retry only on `429`, so a
+lost response can never queue (and bill) the same work twice.
 
 ## Types
 
-The request and response structs in `types.go` are **hand-written** from the OpenAPI contract
+The request and response structs in `types*.go` are **hand-written** from the OpenAPI contract
 (`backend/api/serp-api.yaml`) rather than generated. `oapi-codegen` produces pointers for every
 optional field (`*string` for `Country`), `Id`/`ImageUrl`-style names and union wrapper types for
 the batch entries, which makes for an awkward API. Hand-written structs use plain values with
@@ -298,7 +415,7 @@ the batch entries, which makes for an awkward API. Hand-written structs use plai
 true. `contract_test.go` keeps them honest: it loads the contract and fails when a struct is
 missing a property, has one the contract does not define, or marks a required key `omitempty`.
 
-When the contract changes, edit `types.go` and run:
+When the contract changes, edit the `types*.go` files and run:
 
 ```bash
 go test ./...   # contract_test.go reports every drifted field
