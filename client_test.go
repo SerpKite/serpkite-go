@@ -223,7 +223,6 @@ func TestEveryPath(t *testing.T) {
 		func() error { _, err := c.Scholar(ctx, q); return err },
 		func() error { _, err := c.Patents(ctx, q); return err },
 		func() error { _, err := c.Autocomplete(ctx, q); return err },
-		func() error { _, err := c.Lens(ctx, LensParams{URL: "https://example.com/a.jpg"}); return err },
 		func() error { _, err := c.Webpage(ctx, WebpageParams{URL: "https://example.com"}); return err },
 		func() error { _, err := c.Rank(ctx, RankParams{Q: "a", Domain: "example.com", Num: 50}); return err },
 		func() error { _, err := c.Account(ctx); return err },
@@ -237,7 +236,7 @@ func TestEveryPath(t *testing.T) {
 	want := []string{
 		"POST /v1/search", "POST /v1/images", "POST /v1/videos", "POST /v1/news", "POST /v1/maps", "POST /v1/places",
 		"POST /v1/reviews", "POST /v1/shopping", "POST /v1/scholar", "POST /v1/patents", "POST /v1/autocomplete",
-		"POST /v1/lens", "POST /v1/webpage", "POST /v1/rank", "GET /v1/account", "GET /v1/batches/b1",
+		"POST /v1/webpage", "POST /v1/rank", "GET /v1/account", "GET /v1/batches/b1",
 	}
 	reqs := s.requests()
 	for i, w := range want {
@@ -248,8 +247,8 @@ func TestEveryPath(t *testing.T) {
 	if reqs[6].Body["place_id"] != "ChIJ" || reqs[4].Body["ll"] != "@40.7,-74,14z" {
 		t.Errorf("bad bodies: %v %v", reqs[6].Body, reqs[4].Body)
 	}
-	if reqs[15].ContentType != "" || reqs[15].Body != nil {
-		t.Errorf("GET sent a body: %+v", reqs[15])
+	if reqs[14].ContentType != "" || reqs[14].Body != nil {
+		t.Errorf("GET sent a body: %+v", reqs[14])
 	}
 }
 

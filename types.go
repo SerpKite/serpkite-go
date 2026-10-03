@@ -29,7 +29,6 @@ const (
 	EndpointScholar      Endpoint = "scholar"
 	EndpointPatents      Endpoint = "patents"
 	EndpointAutocomplete Endpoint = "autocomplete"
-	EndpointLens         Endpoint = "lens"
 	EndpointWebpage      Endpoint = "webpage"
 )
 
@@ -190,18 +189,6 @@ type ReviewsParams struct {
 	PageToken string `json:"page_token,omitempty"`
 	// Num is up to 50 (default 10); 1 credit per 10 reviews.
 	Num    int    `json:"num,omitempty"`
-	Format string `json:"format,omitempty"`
-	Fields string `json:"fields,omitempty"`
-	MaxAge int    `json:"max_age,omitempty"`
-}
-
-// LensParams are the parameters of [Client.Lens].
-type LensParams struct {
-	// URL of the image (required).
-	URL      string `json:"url"`
-	Country  string `json:"country,omitempty"`
-	Language string `json:"language,omitempty"`
-	// Format is "json" (default) or "compact"; use [Client.Markdown] for Markdown.
 	Format string `json:"format,omitempty"`
 	Fields string `json:"fields,omitempty"`
 	MaxAge int    `json:"max_age,omitempty"`
@@ -551,7 +538,7 @@ type PatentsResponse struct {
 	Meta    Meta           `json:"meta"`
 }
 
-// ── Autocomplete, lens, webpage ──────────────────────────────────────────
+// ── Autocomplete, webpage ──────────────────────────────────────────
 
 // Suggestion is one autocomplete suggestion.
 type Suggestion struct {
@@ -562,24 +549,6 @@ type Suggestion struct {
 type AutocompleteResponse struct {
 	Request RequestEcho  `json:"request"`
 	Results []Suggestion `json:"results"`
-	Meta    Meta         `json:"meta"`
-}
-
-// LensResult is one visual match.
-type LensResult struct {
-	Position     int    `json:"position"`
-	Title        string `json:"title"`
-	Source       string `json:"source,omitempty"`
-	Link         string `json:"link"`
-	Domain       string `json:"domain,omitempty"`
-	ImageURL     string `json:"image_url,omitempty"`
-	ThumbnailURL string `json:"thumbnail_url,omitempty"`
-}
-
-// LensResponse is returned by [Client.Lens].
-type LensResponse struct {
-	Request RequestEcho  `json:"request"`
-	Results []LensResult `json:"results"`
 	Meta    Meta         `json:"meta"`
 }
 
@@ -668,7 +637,7 @@ const (
 type BatchCreateParams struct {
 	Endpoint Endpoint `json:"endpoint"`
 	// Requests holds 1-100 request bodies for Endpoint: SearchParams,
-	// ReviewsParams, LensParams, WebpageParams or map[string]any.
+	// ReviewsParams, WebpageParams or map[string]any.
 	Requests []any `json:"requests"`
 	// WebhookURL receives each job's result (signed with X-SerpKite-Signature).
 	// Defaults to the account webhook.

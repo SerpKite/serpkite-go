@@ -172,7 +172,7 @@ func (c *Client) SearchMarkdown(ctx context.Context, p SearchParams, opts ...Req
 
 // Markdown calls any vertical with format=markdown and returns the Markdown.
 // params is the endpoint's params struct (SearchParams, ReviewsParams,
-// LensParams, WebpageParams) or a map[string]any.
+// WebpageParams) or a map[string]any.
 func (c *Client) Markdown(ctx context.Context, endpoint Endpoint, params any, opts ...RequestOption) (string, error) {
 	body, err := withField(params, "format", FormatMarkdown)
 	if err != nil {
@@ -230,11 +230,6 @@ func (c *Client) Patents(ctx context.Context, p SearchParams, opts ...RequestOpt
 // Autocomplete returns Google autocomplete suggestions.
 func (c *Client) Autocomplete(ctx context.Context, p SearchParams, opts ...RequestOption) (*AutocompleteResponse, error) {
 	return post[AutocompleteResponse](ctx, c, "/v1/autocomplete", p, opts)
-}
-
-// Lens returns Google Lens visual matches for an image URL.
-func (c *Client) Lens(ctx context.Context, p LensParams, opts ...RequestOption) (*LensResponse, error) {
-	return post[LensResponse](ctx, c, "/v1/lens", p, opts)
 }
 
 // Webpage fetches a public URL and returns clean Markdown, text and metadata.

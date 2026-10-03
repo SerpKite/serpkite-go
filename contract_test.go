@@ -68,7 +68,6 @@ func TestContract(t *testing.T) {
 	}{
 		"SearchRequest":        {prop("SearchRequest"), SearchParams{}},
 		"ReviewsRequest":       {prop("ReviewsRequest"), ReviewsParams{}},
-		"LensRequest":          {prop("LensRequest"), LensParams{}},
 		"WebpageRequest":       {prop("WebpageRequest"), WebpageParams{}},
 		"RankRequest":          {prop("RankRequest"), RankParams{}},
 		"BatchCreateRequest":   {prop("BatchCreateRequest"), BatchCreateParams{}},
@@ -102,8 +101,6 @@ func TestContract(t *testing.T) {
 		"PatentsResponse":      {prop("PatentsResponse"), PatentsResponse{}},
 		"Suggestion":           {prop("Suggestion"), Suggestion{}},
 		"AutocompleteResponse": {prop("AutocompleteResponse"), AutocompleteResponse{}},
-		"LensResult":           {prop("LensResult"), LensResult{}},
-		"LensResponse":         {prop("LensResponse"), LensResponse{}},
 		"PageMetadata":         {prop("PageMetadata"), PageMetadata{}},
 		"WebpageResponse":      {prop("WebpageResponse"), WebpageResponse{}},
 		"RankResponse":         {prop("RankResponse"), RankResponse{}},

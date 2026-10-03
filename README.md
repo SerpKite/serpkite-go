@@ -105,7 +105,6 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `Scholar` | `POST /v1/scholar` | `SearchParams` | `*ScholarResponse` |
 | `Patents` | `POST /v1/patents` | `SearchParams` | `*PatentsResponse` |
 | `Autocomplete` | `POST /v1/autocomplete` | `SearchParams` | `*AutocompleteResponse` (`Results[i].Value`) |
-| `Lens` | `POST /v1/lens` | `LensParams` (`URL` of an image) | `*LensResponse` |
 | `Webpage` | `POST /v1/webpage` | `WebpageParams` (`URL`, `IncludeHTML`) | `*WebpageResponse` (`Markdown`, `Text`, `Metadata`) |
 | `Rank` | `POST /v1/rank` | `RankParams` (`Q`, `Domain`, `Num`: 10\|20\|30\|50\|100) | `*RankResponse` (`Position` or nil, `Matches`, `Checked`) |
 | `Account` | `GET /v1/account` | none | `*Account` (`Balance`, `Plan`, `RateLimitRPS`, `Month`, …) |
