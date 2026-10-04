@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
