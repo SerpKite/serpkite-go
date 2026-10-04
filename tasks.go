@@ -152,8 +152,9 @@ func (s *MonitorsService) Delete(ctx context.Context, id string, opts ...Request
 	return err
 }
 
-// Run makes a monitor due now (it runs at the next scheduler poll, within
-// about 30 seconds). Only retried on 429.
+// Run makes an active monitor due now (it runs at the next scheduler poll,
+// within about 30 seconds). Paused monitors return 409; Update with Active
+// true resumes and schedules them. Only retried on 429.
 func (s *MonitorsService) Run(ctx context.Context, id string, opts ...RequestOption) (*Monitor, error) {
 	var out Monitor
 	if _, err := s.c.decode(ctx, call{method: http.MethodPost, path: "/v1/monitors/" + url.PathEscape(id) + "/run", opts: opts, out: &out, rateLimitOnly: true}); err != nil {
