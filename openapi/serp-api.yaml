@@ -1059,13 +1059,20 @@ components:
         fid: { type: string }
         country: { type: string }
         language: { type: string }
-        sort: { type: string, enum: [most_relevant, newest, highest_rating, lowest_rating], default: most_relevant }
+        sort:
+          type: string
+          enum: [most_relevant, newest, highest_rating, lowest_rating]
+          default: most_relevant
+          description: >-
+            Only `most_relevant` is served: Google Maps shows other review orders only to signed-in visitors,
+            so `newest`, `highest_rating` and `lowest_rating` return 400 (not charged).
         page_token:
           type: string
           description: >-
             `next_page_token` from the previous page, unchanged. Opaque and bound to the place and `sort`
-            it was issued for (anything else is a 400). Paging reaches the first 100 reviews of a place per sort order.
-        num: { type: integer, default: 10, maximum: 50, description: "Reviews per page (a page can be shorter when Google stops loading early; `next_page_token` then resumes after it)" }
+            it was issued for (anything else is a 400). Paging reaches the first 10 reviews of a place, all
+            Google Maps shows a logged-out visitor.
+        num: { type: integer, default: 10, maximum: 50, description: "Reviews per page; a page holds at most 10 (the first 10 reviews of a place). A page can be shorter when Google stops loading early; `next_page_token` then resumes after it" }
         format: { type: string, enum: [json, markdown, compact] }
         fields: { type: string }
         max_age: { type: integer }

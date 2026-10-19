@@ -100,7 +100,7 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `News` | `POST /v1/news` | `SearchParams` | `*NewsResponse` |
 | `Maps` | `POST /v1/maps` | `SearchParams` (+ `LL`: `"@lat,lng,14z"`) | `*PlacesResponse` |
 | `Places` | `POST /v1/places` | `SearchParams` | `*PlacesResponse` |
-| `Reviews` | `POST /v1/reviews` | `ReviewsParams` (`PlaceID` \| `CID` \| `FID`, `Sort`, `PageToken`, `Num` ≤ 50) | `*ReviewsResponse` (+ `NextPageToken`) |
+| `Reviews` | `POST /v1/reviews` | `ReviewsParams` (`PlaceID` \| `CID` \| `FID`, `Sort`, `PageToken`, `Num` ≤ 10) | `*ReviewsResponse` (+ `NextPageToken`) |
 | `Shopping` | `POST /v1/shopping` | `SearchParams` | `*ShoppingResponse` |
 | `Scholar` | `POST /v1/scholar` | `SearchParams` | `*ScholarResponse` |
 | `Patents` | `POST /v1/patents` | `SearchParams` | `*PatentsResponse` |
@@ -144,8 +144,8 @@ res, err := c.Search(ctx, serpkite.SearchParams{Q: "espresso", Autocorrect: serp
 // Markdown from any vertical
 md, err := c.Markdown(ctx, serpkite.EndpointNews, serpkite.SearchParams{Q: "espresso"})
 
-// Reviews, paged
-p := serpkite.ReviewsParams{PlaceID: "ChIJN1t_tDeuEmsRUsoyG83frY4", Sort: "newest"}
+// Reviews, paged (the first 10 of a place)
+p := serpkite.ReviewsParams{PlaceID: "ChIJN1t_tDeuEmsRUsoyG83frY4", Num: 5}
 for {
 	page, err := c.Reviews(ctx, p)
 	if err != nil {

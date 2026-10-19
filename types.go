@@ -199,11 +199,13 @@ type ReviewsParams struct {
 	FID      string `json:"fid,omitempty"`
 	Country  string `json:"country,omitempty"`
 	Language string `json:"language,omitempty"`
-	// Sort is most_relevant (default), newest, highest_rating or lowest_rating.
+	// Sort is most_relevant (default). newest, highest_rating and
+	// lowest_rating return 400: Google shows them only to signed-in visitors.
 	Sort string `json:"sort,omitempty"`
 	// PageToken is NextPageToken from the previous page.
 	PageToken string `json:"page_token,omitempty"`
-	// Num is up to 50 (default 10); 1 credit per 10 reviews.
+	// Num is the page size (default 10); a page holds at most 10, the first
+	// 10 reviews of a place being all Google shows. 1 credit per 10 reviews.
 	Num    int    `json:"num,omitempty"`
 	Format string `json:"format,omitempty"`
 	Fields string `json:"fields,omitempty"`
