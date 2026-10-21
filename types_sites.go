@@ -14,6 +14,7 @@ type MapParams struct {
 	// URL is any page of the site (required).
 	URL string `json:"url"`
 	// Search keeps only URLs relevant to these words, most relevant first.
+	// With a thin sitemap, map also reads up to 8 linked pages one level deeper.
 	Search string `json:"search,omitempty"`
 	// Limit is 1-5000 (default 100).
 	Limit             int  `json:"limit,omitempty"`
