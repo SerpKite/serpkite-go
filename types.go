@@ -54,6 +54,9 @@ const (
 	ProviderDuckDuckGo = "duckduckgo"
 	ProviderMojeek     = "mojeek"
 	ProviderWikipedia  = "wikipedia"
+	// ProviderYandex is Yandex Maps for Maps, Places and Place, where the
+	// deployment enables it.
+	ProviderYandex = "yandex"
 )
 
 // EngineAuto lets other enabled providers answer, in route order, when Google
@@ -214,11 +217,14 @@ type ReviewsParams struct {
 }
 
 // PlaceParams are the parameters of [Client.Place]. Set one of PlaceID, CID
-// or FID (PlaceID wins, then FID, then CID).
+// or FID (Google; PlaceID wins, then FID, then CID), or OID (Yandex Maps).
 type PlaceParams struct {
 	PlaceID string `json:"place_id,omitempty"`
 	CID     string `json:"cid,omitempty"`
 	FID     string `json:"fid,omitempty"`
+	// OID is a Yandex Maps organisation id (OID of an Engine "yandex" maps
+	// result). It implies Engine "yandex" and can't be combined with Google's ids.
+	OID string `json:"oid,omitempty"`
 	// Country (ISO 3166-1 alpha-2, default "us") is Google's regional view of the listing.
 	Country string `json:"country,omitempty"`
 	// Language of the address, categories, hours and description (default "en").
@@ -313,6 +319,7 @@ type RequestEcho struct {
 	PlaceID        string `json:"place_id,omitempty"`
 	CID            string `json:"cid,omitempty"`
 	FID            string `json:"fid,omitempty"`
+	OID            string `json:"oid,omitempty"`
 	Sort           string `json:"sort,omitempty"`
 	IncludeContent int    `json:"include_content,omitempty"`
 	Format         string `json:"format,omitempty"`
@@ -508,6 +515,10 @@ type PlaceResult struct {
 	PlaceID       string       `json:"place_id,omitempty"`
 	CID           string       `json:"cid,omitempty"`
 	FID           string       `json:"fid,omitempty"`
+	// OID is the Yandex Maps organisation id (Engine "yandex"), for
+	// [Client.Place], and YandexMapsURL its page.
+	OID           string `json:"oid,omitempty"`
+	YandexMapsURL string `json:"yandex_maps_url,omitempty"`
 }
 
 // WeeklyHours are a place's opening hours per weekday, as local times in its

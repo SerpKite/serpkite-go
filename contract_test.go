@@ -177,7 +177,7 @@ func TestContract(t *testing.T) {
 	}
 
 	// The Provider constants match the contract's Provider enum.
-	providers := []string{ProviderGoogle, ProviderBrave, ProviderBing, ProviderYahoo, ProviderDuckDuckGo, ProviderMojeek, ProviderWikipedia}
+	providers := []string{ProviderGoogle, ProviderBrave, ProviderBing, ProviderYahoo, ProviderDuckDuckGo, ProviderMojeek, ProviderWikipedia, ProviderYandex}
 	if p := s["Provider"]; p == nil || !slices.Equal(p.Enum, providers) {
 		t.Errorf("Provider constants %v differ from the contract enum %v", providers, p)
 	}

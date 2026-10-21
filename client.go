@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.5.0"
+const Version = "0.6.0"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
@@ -209,7 +209,8 @@ func (c *Client) Places(ctx context.Context, p SearchParams, opts ...RequestOpti
 	return post[PlacesResponse](ctx, c, "/v1/places", p, opts)
 }
 
-// Place returns the details of one place (by PlaceID, CID or FID): address,
+// Place returns the details of one place (by PlaceID, CID or FID, or a Yandex
+// Maps OID): address,
 // country, time zone, hours (text and WeeklyHours), phones, description and
 // photos. Results holds the place, or is empty (not charged) when no place has
 // that id. 1 credit.

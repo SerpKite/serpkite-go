@@ -560,6 +560,25 @@ func TestSearchControls(t *testing.T) {
 	}
 }
 
+func TestPlaceByYandexOID(t *testing.T) {
+	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "place", "engine": "yandex", "oid": "1045821788"},
+  "results": [{"position": 1, "title": "Кофемания", "country": "RU", "timezone": "Europe/Moscow",
+    "weekly_hours": {"monday": [{"open": "00:00", "close": "24:00"}]},
+    "oid": "1045821788", "yandex_maps_url": "https://yandex.ru/maps/org/1045821788/"}],
+  "meta": {"request_id": "req_1", "credits_used": 1, "cached": false, "engine": "yandex"}}`))
+	res, err := newTestClient(s).Place(context.Background(), PlaceParams{OID: "1045821788", Language: "ru"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := s.requests()[0]; r.Path != "/v1/place" || !reflect.DeepEqual(r.Body, map[string]any{"oid": "1045821788", "language": "ru"}) {
+		t.Errorf("request %+v", r)
+	}
+	p := res.Results[0]
+	if p.OID != "1045821788" || p.YandexMapsURL != "https://yandex.ru/maps/org/1045821788/" || res.Request.OID != "1045821788" {
+		t.Errorf("place %+v request %+v", p, res.Request)
+	}
+}
+
 func TestPlace(t *testing.T) {
 	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "place", "engine": "google"},
   "results": [{"position": 1, "title": "Ronnie Scott's", "international_phone_number": "+44 20 7439 0747",
