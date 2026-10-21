@@ -219,6 +219,7 @@ func TestEveryPath(t *testing.T) {
 		func() error { _, err := c.News(ctx, q); return err },
 		func() error { _, err := c.Maps(ctx, SearchParams{Q: "a", LL: "@40.7,-74,14z"}); return err },
 		func() error { _, err := c.Places(ctx, q); return err },
+		func() error { _, err := c.Place(ctx, PlaceParams{CID: "123"}); return err },
 		func() error { _, err := c.Reviews(ctx, ReviewsParams{PlaceID: "ChIJ", Sort: "newest"}); return err },
 		func() error { _, err := c.Shopping(ctx, q); return err },
 		func() error { _, err := c.Scholar(ctx, q); return err },
@@ -236,7 +237,7 @@ func TestEveryPath(t *testing.T) {
 	}
 	want := []string{
 		"POST /v1/search", "POST /v1/images", "POST /v1/videos", "POST /v1/news", "POST /v1/maps", "POST /v1/places",
-		"POST /v1/reviews", "POST /v1/shopping", "POST /v1/scholar", "POST /v1/patents", "POST /v1/autocomplete",
+		"POST /v1/place", "POST /v1/reviews", "POST /v1/shopping", "POST /v1/scholar", "POST /v1/patents", "POST /v1/autocomplete",
 		"POST /v1/webpage", "POST /v1/rank", "GET /v1/account", "GET /v1/batches/b1",
 	}
 	reqs := s.requests()
@@ -245,8 +246,8 @@ func TestEveryPath(t *testing.T) {
 			t.Errorf("call %d: %s, want %s", i, got, w)
 		}
 	}
-	if reqs[6].Body["place_id"] != "ChIJ" || reqs[4].Body["ll"] != "@40.7,-74,14z" {
-		t.Errorf("bad bodies: %v %v", reqs[6].Body, reqs[4].Body)
+	if reqs[6].Body["cid"] != "123" || reqs[7].Body["place_id"] != "ChIJ" || reqs[4].Body["ll"] != "@40.7,-74,14z" {
+		t.Errorf("bad bodies: %v %v %v", reqs[6].Body, reqs[7].Body, reqs[4].Body)
 	}
 	if reqs[14].ContentType != "" || reqs[14].Body != nil {
 		t.Errorf("GET sent a body: %+v", reqs[14])
@@ -556,6 +557,39 @@ func TestSearchControls(t *testing.T) {
 	if b["start_date"] != "2026-01-01" || b["end_date"] != "2026-03-31" || b["highlights"] != true ||
 		!reflect.DeepEqual(b["include_domains"], []any{"github.com"}) || !reflect.DeepEqual(b["exclude_domains"], []any{".gov"}) || !reflect.DeepEqual(b["boost_domains"], []any{"arxiv.org"}) {
 		t.Fatalf("body = %v", b)
+	}
+}
+
+func TestPlace(t *testing.T) {
+	s := newServer(t, jsonReply(200, `{"request": {"endpoint": "place", "engine": "google"},
+  "results": [{"position": 1, "title": "Ronnie Scott's", "international_phone_number": "+44 20 7439 0747",
+    "country": "GB", "timezone": "Europe/London",
+    "weekly_hours": {"monday": [{"open": "18:00", "close": "03:00", "next_day": true}], "sunday": []},
+    "photos": [{"url": "https://lh5.googleusercontent.com/p/x", "width": 1600, "source": "business"}],
+    "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJ123", "place_id": "ChIJ123"}],
+  "meta": {"request_id": "r", "credits_used": 1, "cached": false}}`))
+	c := newTestClient(s)
+	res, err := c.Place(context.Background(), PlaceParams{PlaceID: "ChIJ123", Language: "en"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := res.Results[0]
+	h := p.WeeklyHours
+	if h == nil || !reflect.DeepEqual(h.Monday, []HoursInterval{{Open: "18:00", Close: "03:00", NextDay: true}}) {
+		t.Fatalf("weekly_hours = %+v", h)
+	}
+	if h.Sunday == nil || len(h.Sunday) != 0 || h.Tuesday != nil {
+		t.Errorf("closed day must be empty and unlisted day nil: %+v", h)
+	}
+	if len(p.Photos) != 1 || p.Photos[0].Source != PhotoSourceBusiness || p.Photos[0].Width != 1600 {
+		t.Errorf("photos = %+v", p.Photos)
+	}
+	if p.Country != "GB" || p.Timezone != "Europe/London" || p.InternationalPhoneNumber != "+44 20 7439 0747" || p.GoogleMapsURL == "" {
+		t.Errorf("place = %+v", p)
+	}
+	r := s.requests()[0]
+	if r.Path != "/v1/place" || !reflect.DeepEqual(r.Body, map[string]any{"place_id": "ChIJ123", "language": "en"}) {
+		t.Fatalf("req = %+v", r)
 	}
 }
 

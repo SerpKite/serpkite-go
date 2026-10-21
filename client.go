@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
@@ -174,8 +174,8 @@ func (c *Client) SearchMarkdown(ctx context.Context, p SearchParams, opts ...Req
 }
 
 // Markdown calls any vertical with format=markdown and returns the Markdown.
-// params is the endpoint's params struct (SearchParams, ReviewsParams,
-// WebpageParams) or a map[string]any.
+// params is the endpoint's params struct (SearchParams, PlaceParams,
+// ReviewsParams, WebpageParams) or a map[string]any.
 func (c *Client) Markdown(ctx context.Context, endpoint Endpoint, params any, opts ...RequestOption) (string, error) {
 	body, err := withField(params, "format", FormatMarkdown)
 	if err != nil {
@@ -207,6 +207,14 @@ func (c *Client) Maps(ctx context.Context, p SearchParams, opts ...RequestOption
 // Places returns Google local results.
 func (c *Client) Places(ctx context.Context, p SearchParams, opts ...RequestOption) (*PlacesResponse, error) {
 	return post[PlacesResponse](ctx, c, "/v1/places", p, opts)
+}
+
+// Place returns the details of one place (by PlaceID, CID or FID): address,
+// country, time zone, hours (text and WeeklyHours), phones, description and
+// photos. Results holds the place, or is empty (not charged) when no place has
+// that id. 1 credit.
+func (c *Client) Place(ctx context.Context, p PlaceParams, opts ...RequestOption) (*PlacesResponse, error) {
+	return post[PlacesResponse](ctx, c, "/v1/place", p, opts)
 }
 
 // Reviews returns reviews of a place (by PlaceID, CID or FID). Page with

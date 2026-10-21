@@ -24,6 +24,7 @@ const (
 	EndpointNews         Endpoint = "news"
 	EndpointMaps         Endpoint = "maps"
 	EndpointPlaces       Endpoint = "places"
+	EndpointPlace        Endpoint = "place"
 	EndpointReviews      Endpoint = "reviews"
 	EndpointShopping     Endpoint = "shopping"
 	EndpointScholar      Endpoint = "scholar"
@@ -210,6 +211,23 @@ type ReviewsParams struct {
 	Format string `json:"format,omitempty"`
 	Fields string `json:"fields,omitempty"`
 	MaxAge int    `json:"max_age,omitempty"`
+}
+
+// PlaceParams are the parameters of [Client.Place]. Set one of PlaceID, CID
+// or FID (PlaceID wins, then FID, then CID).
+type PlaceParams struct {
+	PlaceID string `json:"place_id,omitempty"`
+	CID     string `json:"cid,omitempty"`
+	FID     string `json:"fid,omitempty"`
+	// Country (ISO 3166-1 alpha-2, default "us") is Google's regional view of the listing.
+	Country string `json:"country,omitempty"`
+	// Language of the address, categories, hours and description (default "en").
+	Language string `json:"language,omitempty"`
+	Format   string `json:"format,omitempty"`
+	Fields   string `json:"fields,omitempty"`
+	MaxAge   int    `json:"max_age,omitempty"`
+	// Engine names the search providers that may answer; nil is Google only.
+	Engine Engine `json:"engine,omitempty"`
 }
 
 // WebpageParams are the parameters of [Client.Webpage].
@@ -457,28 +475,81 @@ type NewsResponse struct {
 
 // ── Places and reviews ───────────────────────────────────────────────────
 
-// PlaceResult is one place (Maps, local results, the search local pack).
+// PlaceResult is one place (Maps, local results, the search local pack, [Client.Place]).
 type PlaceResult struct {
-	Position     int               `json:"position"`
-	Title        string            `json:"title"`
-	Address      string            `json:"address,omitempty"`
-	Latitude     float64           `json:"latitude,omitempty"`
-	Longitude    float64           `json:"longitude,omitempty"`
-	Rating       float64           `json:"rating,omitempty"`
-	RatingCount  int               `json:"rating_count,omitempty"`
-	PriceLevel   string            `json:"price_level,omitempty"`
-	Type         string            `json:"type,omitempty"`
-	Types        []string          `json:"types,omitempty"`
-	Website      string            `json:"website,omitempty"`
-	PhoneNumber  string            `json:"phone_number,omitempty"`
+	Position                 int      `json:"position"`
+	Title                    string   `json:"title"`
+	Address                  string   `json:"address,omitempty"`
+	Latitude                 float64  `json:"latitude,omitempty"`
+	Longitude                float64  `json:"longitude,omitempty"`
+	Rating                   float64  `json:"rating,omitempty"`
+	RatingCount              int      `json:"rating_count,omitempty"`
+	PriceLevel               string   `json:"price_level,omitempty"`
+	Type                     string   `json:"type,omitempty"`
+	Types                    []string `json:"types,omitempty"`
+	Website                  string   `json:"website,omitempty"`
+	PhoneNumber              string   `json:"phone_number,omitempty"`
+	InternationalPhoneNumber string   `json:"international_phone_number,omitempty"`
+	// OpeningHours is the hours as Google displays them, keyed by English
+	// weekday ("Monday" … "Sunday"), in the request's language.
 	OpeningHours map[string]string `json:"opening_hours,omitempty"`
-	ThumbnailURL string            `json:"thumbnail_url,omitempty"`
-	PlaceID      string            `json:"place_id,omitempty"`
-	CID          string            `json:"cid,omitempty"`
-	FID          string            `json:"fid,omitempty"`
+	// WeeklyHours is the same hours as 24-hour HH:MM intervals per weekday.
+	WeeklyHours *WeeklyHours `json:"weekly_hours,omitempty"`
+	// Country is the place's ISO 3166-1 alpha-2 code, upper case ("GB").
+	Country string `json:"country,omitempty"`
+	// Timezone is the place's IANA time zone ("Europe/London").
+	Timezone string `json:"timezone,omitempty"`
+	// Description is Google's short description of the place, or the owner's.
+	Description string `json:"description,omitempty"`
+	// Photos of the place ([Client.Place]; up to 10).
+	Photos        []PlacePhoto `json:"photos,omitempty"`
+	GoogleMapsURL string       `json:"google_maps_url,omitempty"`
+	ThumbnailURL  string       `json:"thumbnail_url,omitempty"`
+	PlaceID       string       `json:"place_id,omitempty"`
+	CID           string       `json:"cid,omitempty"`
+	FID           string       `json:"fid,omitempty"`
 }
 
-// PlacesResponse is returned by [Client.Maps] and [Client.Places].
+// WeeklyHours are a place's opening hours per weekday, as local times in its
+// Timezone. A closed day is an empty (non-nil) slice, a day open 24 hours is
+// {Open: "00:00", Close: "24:00"}, and a day with a break has several
+// intervals. A day Google doesn't list is nil.
+type WeeklyHours struct {
+	Monday    []HoursInterval `json:"monday,omitempty"`
+	Tuesday   []HoursInterval `json:"tuesday,omitempty"`
+	Wednesday []HoursInterval `json:"wednesday,omitempty"`
+	Thursday  []HoursInterval `json:"thursday,omitempty"`
+	Friday    []HoursInterval `json:"friday,omitempty"`
+	Saturday  []HoursInterval `json:"saturday,omitempty"`
+	Sunday    []HoursInterval `json:"sunday,omitempty"`
+}
+
+// HoursInterval is one opening interval in 24-hour HH:MM. Close is "24:00"
+// at midnight; NextDay is set when the interval closes after midnight
+// (e.g. 17:30–03:00).
+type HoursInterval struct {
+	Open    string `json:"open"`
+	Close   string `json:"close"`
+	NextDay bool   `json:"next_day,omitempty"`
+}
+
+// Values of [PlacePhoto].Source.
+const (
+	PhotoSourceBusiness = "business"
+	PhotoSourceVisitor  = "visitor"
+)
+
+// PlacePhoto is a photo of a place. The URL is public (at most 1600 px on the
+// long side).
+type PlacePhoto struct {
+	URL    string `json:"url"`
+	Width  int    `json:"width,omitempty"`
+	Height int    `json:"height,omitempty"`
+	// Source is who uploaded it ([PhotoSourceBusiness] or [PhotoSourceVisitor]), when Google says.
+	Source string `json:"source,omitempty"`
+}
+
+// PlacesResponse is returned by [Client.Maps], [Client.Places] and [Client.Place].
 type PlacesResponse struct {
 	Request RequestEcho   `json:"request"`
 	Results []PlaceResult `json:"results"`
@@ -705,7 +776,7 @@ const (
 type BatchCreateParams struct {
 	Endpoint Endpoint `json:"endpoint"`
 	// Requests holds 1-100 request bodies for Endpoint: SearchParams,
-	// ReviewsParams, WebpageParams or map[string]any.
+	// PlaceParams, ReviewsParams, WebpageParams or map[string]any.
 	Requests []any `json:"requests"`
 	// WebhookURL receives each job's result (signed with X-SerpKite-Signature).
 	// Defaults to the account webhook.

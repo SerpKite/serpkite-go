@@ -67,6 +67,7 @@ func TestContract(t *testing.T) {
 		typ    any
 	}{
 		"SearchRequest":           {prop("SearchRequest"), SearchParams{}},
+		"PlaceRequest":            {prop("PlaceRequest"), PlaceParams{}},
 		"ReviewsRequest":          {prop("ReviewsRequest"), ReviewsParams{}},
 		"WebpageRequest":          {prop("WebpageRequest"), WebpageParams{}},
 		"RankRequest":             {prop("RankRequest"), RankParams{}},
@@ -88,6 +89,9 @@ func TestContract(t *testing.T) {
 		"NewsResult":              {prop("NewsResult"), NewsResult{}},
 		"NewsResponse":            {prop("NewsResponse"), NewsResponse{}},
 		"PlaceResult":             {prop("PlaceResult"), PlaceResult{}},
+		"WeeklyHours":             {prop("WeeklyHours"), WeeklyHours{}},
+		"HoursInterval":           {prop("HoursInterval"), HoursInterval{}},
+		"PlacePhoto":              {prop("PlacePhoto"), PlacePhoto{}},
 		"PlacesResponse":          {prop("PlacesResponse"), PlacesResponse{}},
 		"ReviewResult":            {prop("ReviewResult"), ReviewResult{}},
 		"ReviewResult.user":       {prop("ReviewResult", "user"), ReviewUser{}},

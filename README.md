@@ -100,6 +100,7 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `News` | `POST /v1/news` | `SearchParams` | `*NewsResponse` |
 | `Maps` | `POST /v1/maps` | `SearchParams` (+ `LL`: `"@lat,lng,14z"`) | `*PlacesResponse` |
 | `Places` | `POST /v1/places` | `SearchParams` | `*PlacesResponse` |
+| `Place` | `POST /v1/place` | `PlaceParams` (`PlaceID` \| `CID` \| `FID`, `Country`, `Language`) | `*PlacesResponse` (one place: `WeeklyHours`, `Photos`, `Timezone`, …; empty when the id is unknown) |
 | `Reviews` | `POST /v1/reviews` | `ReviewsParams` (`PlaceID` \| `CID` \| `FID`, `Sort`, `PageToken`, `Num` ≤ 10) | `*ReviewsResponse` (+ `NextPageToken`) |
 | `Shopping` | `POST /v1/shopping` | `SearchParams` | `*ShoppingResponse` |
 | `Scholar` | `POST /v1/scholar` | `SearchParams` | `*ScholarResponse` |
@@ -143,6 +144,12 @@ res, err := c.Search(ctx, serpkite.SearchParams{Q: "espresso", Autocorrect: serp
 
 // Markdown from any vertical
 md, err := c.Markdown(ctx, serpkite.EndpointNews, serpkite.SearchParams{Q: "espresso"})
+
+// One place in full: structured hours, phones, time zone, photos
+pl, err := c.Place(ctx, serpkite.PlaceParams{PlaceID: "ChIJN1t_tDeuEmsRUsoyG83frY4"})
+if err == nil && len(pl.Results) > 0 && pl.Results[0].WeeklyHours != nil {
+	fmt.Println(pl.Results[0].Timezone, pl.Results[0].WeeklyHours.Monday) // [{09:00 17:00 false}]
+}
 
 // Reviews, paged (the first 10 of a place)
 p := serpkite.ReviewsParams{PlaceID: "ChIJN1t_tDeuEmsRUsoyG83frY4", Num: 5}
