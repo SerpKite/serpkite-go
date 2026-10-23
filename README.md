@@ -226,7 +226,8 @@ news, err := c.News(ctx, serpkite.SearchParams{Q: "espresso", Engine: serpkite.E
 ```
 
 - `Engine` is a `[]string`: one name (`ProviderGoogle`, `EngineAuto`, `EngineConsensus`,
-  `ProviderBrave`, `ProviderBing`, `ProviderYahoo`, `ProviderDuckDuckGo`, `ProviderMojeek`, `ProviderWikipedia`) is
+  `ProviderBrave`, `ProviderBing`, `ProviderYahoo`, `ProviderDuckDuckGo`, `ProviderMojeek`, `ProviderWikipedia`,
+  `ProviderYandex`) is
   sent as a JSON string, several as an array. `EngineAuto` and `EngineConsensus` can't be combined
   with other names; unknown names, or a provider that doesn't serve the endpoint, return a 400
   `invalid_request`. `Engine.String()` gives the query-string form (`google,brave`).

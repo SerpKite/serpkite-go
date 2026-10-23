@@ -54,8 +54,8 @@ const (
 	ProviderDuckDuckGo = "duckduckgo"
 	ProviderMojeek     = "mojeek"
 	ProviderWikipedia  = "wikipedia"
-	// ProviderYandex is Yandex Maps for Maps, Places and Place, where the
-	// deployment enables it.
+	// ProviderYandex is Yandex web search for Search, and Yandex Maps for
+	// Maps, Places and Place, where the deployment enables it.
 	ProviderYandex = "yandex"
 )
 
