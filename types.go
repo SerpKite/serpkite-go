@@ -150,7 +150,9 @@ type SearchParams struct {
 	UULE string `json:"uule,omitempty"`
 	// LL is a Maps viewport "@lat,lng,14z" (maps only).
 	LL string `json:"ll,omitempty"`
-	// Num is 10 (default), or 100 for the depth bundle (7 credits).
+	// Num is 10 (default), or 100 for the depth bundle (7 credits). On Images
+	// a page is a block of up to 100 images and Num (default all) is how many
+	// of them to return.
 	Num int `json:"num,omitempty"`
 	// Page is 1-10.
 	Page int `json:"page,omitempty"`
