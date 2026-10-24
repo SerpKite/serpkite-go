@@ -60,10 +60,10 @@ type CrawlParams struct {
 	WebhookURL string `json:"webhook_url,omitempty"`
 }
 
-// TaskCreated is the 202 response of [Client.Crawl].
+// TaskCreated is the 202 response of [Client.Crawl] and [Client.Research].
 type TaskCreated struct {
 	ID string `json:"id"`
-	// Kind is "crawl".
+	// Kind is "crawl" or "research".
 	Kind            string    `json:"kind"`
 	Status          string    `json:"status"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -72,7 +72,7 @@ type TaskCreated struct {
 	WebhookURL      *string   `json:"webhook_url,omitempty"`
 }
 
-// TaskCancelResponse is returned by [Client.CancelCrawl].
+// TaskCancelResponse is returned by [Client.CancelCrawl] and [Client.CancelResearch].
 type TaskCancelResponse struct {
 	ID string `json:"id"`
 	// Status is "canceled" (it was queued: refunded at once) or "canceling"
@@ -355,13 +355,15 @@ type MonitorRunList struct {
 
 // Webhook event types (the X-SerpKite-Event header and the "event" field).
 const (
-	EventBatchCompleted = "batch.completed"
-	EventCrawlCompleted = "crawl.completed"
+	EventBatchCompleted    = "batch.completed"
+	EventCrawlCompleted    = "crawl.completed"
+	EventResearchCompleted = "research.completed"
 
 	EventMonitorResults = "monitor.results"
 )
 
-// TaskCompletedEvent is the body of crawl.completed.
+// TaskCompletedEvent is the body of crawl.completed and research.completed
+// (Kind is "crawl" or "research").
 type TaskCompletedEvent struct {
 	Event       string     `json:"event"`
 	ID          string     `json:"id"`
@@ -372,22 +374,28 @@ type TaskCompletedEvent struct {
 	CreditsUsed float64    `json:"credits_used"`
 	// PollURL is where the task (and its full result) can be fetched for 24 hours.
 	PollURL string `json:"poll_url,omitempty"`
-	// Result is a [CrawlResult]; decode it with DecodeResult.
+	// Result is a [CrawlResult] or a [ResearchResult]; decode it with DecodeResult.
 	// It is null when the task failed without one, or when it was larger than
-	// 4 MB (ResultOmitted: fetch PollURL, e.g. with [Client.GetCrawl]).
+	// 4 MB (ResultOmitted: fetch PollURL, e.g. with [Client.GetCrawl] or
+	// [Client.GetResearch]).
 	Result json.RawMessage `json:"result,omitempty"`
 	// ResultOmitted is set when the result was too large for the webhook.
 	ResultOmitted bool       `json:"result_omitted,omitempty"`
 	Error         *TaskError `json:"error,omitempty"`
 }
 
-// DecodeResult unmarshals Result into v (a *CrawlResult).
+// DecodeResult unmarshals Result into v (a *CrawlResult or *ResearchResult).
 // It returns false when there is no result.
 func (e *TaskCompletedEvent) DecodeResult(v any) (bool, error) {
-	if len(e.Result) == 0 || string(e.Result) == "null" {
+	return decodeRaw(e.Result, v)
+}
+
+// decodeRaw unmarshals raw into v; false when raw is empty or null.
+func decodeRaw(raw json.RawMessage, v any) (bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
 		return false, nil
 	}
-	return true, json.Unmarshal(e.Result, v)
+	return true, json.Unmarshal(raw, v)
 }
 
 // MonitorResultsEvent is the body of monitor.results.

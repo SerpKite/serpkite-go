@@ -108,11 +108,16 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `Autocomplete` | `POST /v1/autocomplete` | `SearchParams` | `*AutocompleteResponse` (`Results[i].Value`) |
 | `Webpage` | `POST /v1/webpage` | `WebpageParams` (`URL`, `IncludeHTML`) | `*WebpageResponse` (`Markdown`, `Text`, `Metadata`) |
 | `Rank` | `POST /v1/rank` | `RankParams` (`Q`, `Domain`, `Num`: 10\|20\|30\|50\|100) | `*RankResponse` (`Position` or nil, `Matches`, `Checked`) |
-| `Extract` | `POST /v1/extract` | `ExtractParams` (`URLs` ≤ 20, `Format`, `Query`, `Highlights`, …) | `*ExtractResponse` (`Results`, `Failed`) |
+| `Answer` | `POST /v1/answer` | `AnswerParams` (`Q`, `Depth`: `DepthFast`\|`DepthStandard`, `NumSources` 1-5, `OutputSchema`, search options) | `*AnswerResponse` (`Answer`, `Citations`, `Results`, `Output`) |
+| `AnswerStream` | `POST /v1/answer` (SSE) | `AnswerParams` | `*AnswerStream` (`Next`, `Event`, `Err`, `Collect`, `Close`) |
+| `Extract` | `POST /v1/extract` | `ExtractParams` (`URLs` ≤ 20, `Format`, `Query`, `Highlights`, `Summary`, `OutputSchema`, `Prompt`, …) | `*ExtractResponse` (`Results`, `Failed`) |
 | `Map` | `POST /v1/map` | `MapParams` (`URL`, `Search`, `Limit`, `Sitemap`, path filters) | `*MapResponse` (`Results[i].URL`) |
 | `Crawl` | `POST /v1/crawl` | `CrawlParams` (`URL`, `Limit` ≤ 1000, `MaxDepth` ≤ 10, …) | `*TaskCreated` (`202`) |
 | `GetCrawl` / `CancelCrawl` | `GET` / `DELETE /v1/crawl/{id}` | id | `*CrawlTask` / `*TaskCancelResponse` |
 | `WaitForCrawl` | polls `GET /v1/crawl/{id}` | id, `WaitOptions` | `*CrawlTask` (completed, failed or canceled) |
+| `Research` | `POST /v1/research` | `ResearchParams` (`Input`, `Effort`: `EffortLite`\|`EffortStandard`\|`EffortDeep`, `OutputSchema`, domains, `WebhookURL`) | `*TaskCreated` (`202`) |
+| `GetResearch` / `CancelResearch` | `GET` / `DELETE /v1/research/{id}` | id | `*ResearchTask` / `*TaskCancelResponse` |
+| `WaitResearch` | polls `GET /v1/research/{id}` | id, `WaitOptions` | `*ResearchTask` (completed, failed or canceled) |
 | `Monitors.Create/List/Get/Update/Delete/Run` | `/v1/monitors…` | `MonitorCreateParams`, `MonitorUpdateParams` | `*Monitor`, `[]Monitor` |
 | `Monitors.Runs` | `GET /v1/monitors/{id}/runs` | id, `*MonitorRunsParams` (`Limit`, `Before`) | `*MonitorRunList` (`Results`, `NextBefore`) |
 | `Account` | `GET /v1/account` | none | `*Account` (`Balance`, `Plan`, `RateLimitRPS`, `Month`, …) |
@@ -125,7 +130,8 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 `Location`, `UULE`, `LL`, `Num` (10, or 100 for the depth bundle), `Page` (1-10), `Time`
 (`hour`|`day`|`week`|`month`|`year`), `TBS`, `Device`, `Safe`, `Autocorrect`, `Format`, `Fields`,
 `IncludeContent` (0-5), `Ads`, `MaxAge`, `Engine` (see
-[Search engines & fallback](#search-engines--fallback)). Zero values mean "API default".
+[Search engines & fallback](#search-engines--fallback)), `IncludeAnswer` (search and news, see
+[AI answers](#ai-answers)). Zero values mean "API default".
 `Autocorrect` defaults to true on the server, so it is a `*bool`: pass `serpkite.Bool(false)` to
 turn it off.
 
@@ -238,6 +244,94 @@ news, err := c.News(ctx, serpkite.SearchParams{Q: "espresso", Engine: serpkite.E
 - `Meta.Engine` names the provider that answered; `Meta.Route` (`[]RouteStep`) lists each attempt
   and its `Outcome`. `Request.Engine` echoes what you asked for.
 - Credits (`Meta.CreditsUsed`, `X-Credits-Used`) follow the answering provider's price.
+
+## AI answers
+
+```go
+// A cited answer grounded on live Google results
+res, err := c.Answer(ctx, serpkite.AnswerParams{Q: "what is retrieval-augmented generation", Depth: serpkite.DepthFast})
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(res.Text()) // Markdown with [1] markers
+for _, cite := range res.Citations {
+	fmt.Println(cite.Index, cite.Title, cite.Link)
+}
+
+// Stream it: one "results" event, "delta" events with the text, then "done"
+s, err := c.AnswerStream(ctx, serpkite.AnswerParams{Q: "what is retrieval-augmented generation"})
+if err != nil {
+	log.Fatal(err)
+}
+defer s.Close()
+for s.Next() {
+	if ev := s.Event(); ev.Delta != nil {
+		fmt.Print(ev.Delta.Text)
+	}
+}
+if err := s.Err(); err != nil { // e.g. code "ai_unavailable"
+	log.Fatal(err)
+}
+
+// Structured output: the answer as JSON matching a schema (not with streaming)
+facts, err := c.Answer(ctx, serpkite.AnswerParams{
+	Q:            "tallest building in the world",
+	OutputSchema: map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": "string"}}},
+})
+var building struct{ Name string }
+_, err = facts.DecodeOutput(&building)
+
+// A cited answer on top of a normal search or news response
+news, err := c.News(ctx, serpkite.SearchParams{Q: "ECB rate decision", Time: "day", IncludeAnswer: true})
+if news.Answer != nil {
+	fmt.Println(news.Answer.Text)
+} else {
+	fmt.Println(news.Meta.Warnings) // the model failed: refunded
+}
+```
+
+- `DepthFast` answers from the result page; `DepthStandard` (default) also reads the top
+  `NumSources` pages. `Meta.Credits` splits the cost into the search and the model part and
+  `Meta.LLM` names the model. Prices: [serpkite.com/pricing](https://serpkite.com/pricing).
+- A model failure is an `*Error` with code `ai_unavailable` (503) and the model part is refunded.
+  In a stream it arrives as an `error` event (`s.Err()`). `Close` before `done` stops generation
+  and the model part is not charged. `WithTimeout` bounds the wait for the response headers only
+  (at least 100 s, since the search runs first); bound a stream with `ctx`. `s.Collect()` reads
+  the rest and returns the `done` event. `Answer` is billed even when its response is lost, so it
+  is retried only on 429.
+- `Extract` takes `Summary` (an AI summary per page) and `OutputSchema` (+ optional `Prompt`; each
+  page's data as JSON in `Output`, decode with `DecodeOutput`). A page whose model step failed
+  carries `SummaryError` / `OutputError` instead. The default `Timeout` becomes 75 seconds with
+  either.
+
+## Research
+
+```go
+task, err := c.Research(ctx, serpkite.ResearchParams{
+	Input:  "Compare managed Postgres vector search options in 2026",
+	Effort: serpkite.EffortStandard, // EffortLite | EffortStandard (default) | EffortDeep
+})
+if err != nil {
+	log.Fatal(err)
+}
+done, err := c.WaitResearch(ctx, task.ID) // completed, failed or canceled (default timeout 15 minutes)
+if err == nil && done.Status == serpkite.TaskCompleted && done.Result != nil {
+	fmt.Println(done.Result.Report) // Markdown with [n] citations
+	for _, src := range done.Result.Sources {
+		fmt.Println(src.Index, src.Link, src.Query)
+	}
+}
+```
+
+- Each `Effort` has a flat price ([serpkite.com/pricing](https://serpkite.com/pricing)), reserved
+  up front and charged only when the report is written; failed research is refunded. `Research`
+  is only retried on 429.
+- `GetResearch` shows `Progress` (`Round`, `Queries`, `Sources`, `Step`) while it runs.
+  `CancelResearch` refunds a queued task; a running one stops at its next round and is charged
+  for the searches already run.
+- `OutputSchema` also returns the report as JSON in `Result.Output`. With `WebhookURL` the task
+  ends with a signed `research.completed` delivery (`serpkite.TaskCompletedEvent`, `Kind`
+  `"research"`; decode `Result` into a `serpkite.ResearchResult`).
 
 ## Map and extract
 
@@ -398,6 +492,7 @@ if errors.As(err, &apiErr) {
 | `internal` | 500 | Server error (retried) |
 | `upstream_error`, `upstream_blocked` | 503 | Google could not be fetched (not billed, retried) |
 | `upstream_timeout` | 503 | The search took too long (not billed, retried) |
+| `ai_unavailable` | 503 | The AI model failed or AI is off (model part refunded; retried, honours `Retry-After`) |
 | `unavailable` | 503 | Temporarily unavailable (retried) |
 | `connection_error`, `timeout` | 0 | No response received |
 | `missing_api_key` | 0 | No key passed and `SERPKITE_API_KEY` unset |
@@ -410,8 +505,9 @@ searches are refunded, so they never cost credits.
 Requests are retried up to `WithMaxRetries` times (default 2) on `429`, `5xx`, network errors and
 timeouts, with exponential backoff (`500 ms · 2^attempt`, capped at 8 s) and jitter. A `Retry-After`
 header (seconds or HTTP date, capped at 60 s) takes precedence. Other `4xx` errors are never
-retried. `Batches.Create`, `Crawl`, `Monitors.Create` and `Monitors.Run` retry only on `429`, so a
-lost response can never queue (and bill) the same work twice.
+retried. `Batches.Create`, `Crawl`, `Research`, `Extract`, `Monitors.Create` and `Monitors.Run`
+retry only on `429`, so a lost response can never queue (and bill) the same work twice.
+`AnswerStream` retries only until the stream starts.
 
 ## Types
 

@@ -194,6 +194,10 @@ type SearchParams struct {
 	// Highlights returns query-ranked passages of the pages read by
 	// IncludeContent instead of the whole page (search only; no extra credits).
 	Highlights bool `json:"highlights,omitempty"`
+	// IncludeAnswer adds a cited AI answer over the results ([SearchResponse].Answer,
+	// [NewsResponse].Answer; search and news only). When the model fails there is
+	// no answer, its credits are refunded and [Meta].Warnings says why.
+	IncludeAnswer bool `json:"include_answer,omitempty"`
 }
 
 // ReviewsParams are the parameters of [Client.Reviews]. Set one of PlaceID, CID or FID.
@@ -286,6 +290,36 @@ type Meta struct {
 	// ParseQuality is ok, partial or empty.
 	ParseQuality string `json:"parse_quality,omitempty"`
 	LatencyMs    int    `json:"latency_ms,omitempty"`
+	// LLM is the model behind the response's AI part (answers, include_answer).
+	LLM *LLMUsage `json:"llm,omitempty"`
+	// Warnings lists non-fatal problems, e.g. an include_answer that failed (and was refunded).
+	Warnings []string `json:"warnings,omitempty"`
+}
+
+// LLMUsage is the model that wrote a response's AI part and the tokens it used.
+type LLMUsage struct {
+	// Provider is e.g. "anthropic" or "openai".
+	Provider     string `json:"provider,omitempty"`
+	Model        string `json:"model,omitempty"`
+	InputTokens  int    `json:"input_tokens,omitempty"`
+	OutputTokens int    `json:"output_tokens,omitempty"`
+}
+
+// Citation is a source an AI answer or report cites with an "[Index]" marker.
+type Citation struct {
+	// Index is the 1-based source number used in the text.
+	Index  int    `json:"index"`
+	Title  string `json:"title"`
+	Link   string `json:"link"`
+	Domain string `json:"domain,omitempty"`
+}
+
+// SearchAnswer is the cited answer of [SearchParams].IncludeAnswer.
+type SearchAnswer struct {
+	// Text is Markdown with "[n]" citation markers (n = the numbered sources:
+	// answer box, knowledge panel, then results).
+	Text      string     `json:"text"`
+	Citations []Citation `json:"citations"`
 }
 
 // Highlight is a query-relevant passage of a page, verbatim.
@@ -329,6 +363,7 @@ type RequestEcho struct {
 	ExcludeDomains []string `json:"exclude_domains,omitempty"`
 	BoostDomains   []string `json:"boost_domains,omitempty"`
 	Highlights     bool     `json:"highlights,omitempty"`
+	IncludeAnswer  bool     `json:"include_answer,omitempty"`
 }
 
 // ── Search ───────────────────────────────────────────────────────────────
@@ -411,7 +446,9 @@ type SearchResponse struct {
 	RelatedSearches []RelatedSearch `json:"related_searches"`
 	TopStories      []NewsResult    `json:"top_stories,omitempty"`
 	Places          []PlaceResult   `json:"places,omitempty"`
-	Meta            Meta            `json:"meta"`
+	// Answer is set with [SearchParams].IncludeAnswer (nil when the model failed).
+	Answer *SearchAnswer `json:"answer,omitempty"`
+	Meta   Meta          `json:"meta"`
 }
 
 // ── Images, videos, news ─────────────────────────────────────────────────
@@ -477,7 +514,9 @@ type NewsResult struct {
 type NewsResponse struct {
 	Request RequestEcho  `json:"request"`
 	Results []NewsResult `json:"results"`
-	Meta    Meta         `json:"meta"`
+	// Answer is set with [SearchParams].IncludeAnswer (nil when the model failed).
+	Answer *SearchAnswer `json:"answer,omitempty"`
+	Meta   Meta          `json:"meta"`
 }
 
 // ── Places and reviews ───────────────────────────────────────────────────

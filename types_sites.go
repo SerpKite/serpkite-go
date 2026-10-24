@@ -1,5 +1,7 @@
 package serpkite
 
+import "encoding/json"
+
 // ── Map ──────────────────────────────────────────────────────────────────
 
 // Sitemap modes of [MapParams].Sitemap.
@@ -89,9 +91,18 @@ type ExtractParams struct {
 	MaxAge int `json:"max_age,omitempty"`
 	// Country fetches through an exit in this country (ISO 3166-1 alpha-2).
 	Country string `json:"country,omitempty"`
-	// Timeout (seconds, 1-90; 0 = the server default, 50) reports pages still loading as failed
-	// (upstream_timeout, not charged).
+	// Timeout (seconds, 1-90; 0 = the server default: 50, or 75 with Summary or
+	// OutputSchema) reports pages still loading as failed (upstream_timeout, not charged).
 	Timeout int `json:"timeout,omitempty"`
+	// Summary adds an AI summary of each page ([ExtractResult].Summary), focused
+	// on Query when set.
+	Summary bool `json:"summary,omitempty"`
+	// OutputSchema is a JSON Schema (at most 16 KB, e.g. a map or a
+	// json.RawMessage): each page's data comes back as JSON matching it in
+	// [ExtractResult].Output.
+	OutputSchema any `json:"output_schema,omitempty"`
+	// Prompt guides OutputSchema extraction (what to pick, how to normalise).
+	Prompt string `json:"prompt,omitempty"`
 }
 
 // ExtractResult is one page of an extract response.
@@ -111,6 +122,18 @@ type ExtractResult struct {
 	Links      []PageLink  `json:"links,omitempty"`
 	Images     []string    `json:"images,omitempty"`
 	Highlights []Highlight `json:"highlights,omitempty"`
+	// Summary is set with [ExtractParams].Summary (nil when it failed: SummaryError).
+	Summary      *string `json:"summary,omitempty"`
+	SummaryError string  `json:"summary_error,omitempty"`
+	// Output is the JSON value matching [ExtractParams].OutputSchema (null when
+	// it failed: OutputError). Decode it with DecodeOutput.
+	Output      json.RawMessage `json:"output,omitempty"`
+	OutputError string          `json:"output_error,omitempty"`
+}
+
+// DecodeOutput unmarshals Output into v. It returns false when there is no output.
+func (r *ExtractResult) DecodeOutput(v any) (bool, error) {
+	return decodeRaw(r.Output, v)
 }
 
 // ExtractFailure is a URL that could not be read (not charged).
@@ -141,6 +164,8 @@ type ExtractMeta struct {
 	LatencyMs   int     `json:"latency_ms,omitempty"`
 	Succeeded   int     `json:"succeeded"`
 	Failed      int     `json:"failed"`
+	// LLM is the model behind Summary / OutputSchema.
+	LLM *LLMUsage `json:"llm,omitempty"`
 }
 
 // ExtractResponse is returned by [Client.Extract].

@@ -148,6 +148,21 @@ func TestContract(t *testing.T) {
 		"MonitorPageChange":       {prop("MonitorPageChange"), MonitorPageChange{}},
 		"MonitorRunList":          {prop("MonitorRunList"), MonitorRunList{}},
 		"MonitorResultsEvent":     {prop("MonitorResultsEvent"), MonitorResultsEvent{}},
+		"LLMUsage":                {prop("LLMUsage"), LLMUsage{}},
+		"Citation":                {prop("Citation"), Citation{}},
+		"SearchAnswer":            {prop("SearchAnswer"), SearchAnswer{}},
+		"AnswerRequest":           {prop("AnswerRequest"), AnswerParams{}},
+		"AnswerSource":            {prop("AnswerSource"), AnswerSource{}},
+		"AnswerResponse":          {prop("AnswerResponse"), AnswerResponse{}},
+		"AnswerStreamResults":     {prop("AnswerStreamResults"), AnswerStreamResults{}},
+		"AnswerStreamDelta":       {prop("AnswerStreamDelta"), AnswerStreamDelta{}},
+		"AnswerStreamDone":        {prop("AnswerStreamDone"), AnswerStreamDone{}},
+		"ResearchRequest":         {prop("ResearchRequest"), ResearchParams{}},
+		"ResearchSource":          {prop("ResearchSource"), ResearchSource{}},
+		"ResearchResult":          {prop("ResearchResult"), ResearchResult{}},
+		"ResearchResult.stats":    {prop("ResearchResult", "stats"), ResearchStats{}},
+		"ResearchTask":            {prop("ResearchTask"), ResearchTask{}},
+		"ResearchTask.progress":   {prop("ResearchTask", "progress"), ResearchProgress{}},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
