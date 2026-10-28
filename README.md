@@ -218,8 +218,8 @@ for _, r := range res.Results {
 
 ## Search engines & fallback
 
-By default every request is answered by Google only (a nil `Engine`); SerpKite already fails over
-across its own proxy pools. Opt in to other providers with `Engine`:
+By default every request is answered by Google only (a nil `Engine`); SerpKite already
+retries Google internally. Opt in to other providers with `Engine`:
 
 ```go
 // Fall back to other enabled providers when Google is blocked or times out
