@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.8.0"
+const Version = "0.8.1"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
@@ -439,14 +439,15 @@ func (c *Client) do(ctx context.Context, cl call) (text string, isJSON bool, err
 			return "", false, err
 		}
 		if status < 200 || status > 299 {
-			retryable := status == http.StatusTooManyRequests || (status >= 500 && !rateLimitOnly)
+			e := errorFromResponse(status, header, body)
+			retryable := (status == http.StatusTooManyRequests && e.Code != CodeDailyLimit) || (status >= 500 && !rateLimitOnly)
 			if canRetry && retryable {
 				if err := sleep(ctx, c.retryDelay(attempt, header)); err != nil {
 					return "", false, err
 				}
 				continue
 			}
-			return "", false, errorFromResponse(status, header, body)
+			return "", false, e
 		}
 		if o.info != nil {
 			*o.info = responseInfo(status, header)

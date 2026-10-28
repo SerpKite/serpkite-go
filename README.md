@@ -548,6 +548,7 @@ if errors.As(err, &apiErr) {
 | `forbidden` | 403 | Not allowed |
 | `not_found` | 404 | Unknown batch id |
 | `rate_limited` | 429 | Too many requests (retried automatically) |
+| `daily_limit_reached` | 429 | The free daily limit is used up until 00:00 UTC; buying any pack removes it (never retried, `serpkite.CodeDailyLimit`) |
 | `internal` | 500 | Server error (retried) |
 | `upstream_error`, `upstream_blocked` | 503 | Google could not be fetched (not billed, retried) |
 | `upstream_timeout` | 503 | The search took too long (not billed, retried) |
@@ -561,8 +562,8 @@ searches are refunded, so they never cost credits.
 
 ## Retries
 
-Requests are retried up to `WithMaxRetries` times (default 2) on `429`, `5xx`, network errors and
-timeouts, with exponential backoff (`500 ms · 2^attempt`, capped at 8 s) and jitter. A `Retry-After`
+Requests are retried up to `WithMaxRetries` times (default 2) on `429` (except
+`daily_limit_reached`), `5xx`, network errors and timeouts, with exponential backoff (`500 ms · 2^attempt`, capped at 8 s) and jitter. A `Retry-After`
 header (seconds or HTTP date, capped at 60 s) takes precedence. Other `4xx` errors are never
 retried. `Batches.Create`, `Crawl`, `Research`, `Extract`, `Answer`, the AI assistant methods,
 `Monitors.Create` and `Monitors.Run` retry only on `429`, so a lost response can never queue (and bill) the same work twice.

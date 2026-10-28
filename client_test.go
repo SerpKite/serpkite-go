@@ -373,6 +373,22 @@ func TestRetryAfter(t *testing.T) {
 	}
 }
 
+func TestDailyLimitNotRetried(t *testing.T) {
+	s := newServer(t, errReply(429, "daily_limit_reached", "daily free limit of 500 credits reached; resets 00:00 UTC. Buy any pack at https://app.serpkite.com/billing to remove it", "Retry-After", "3600"), jsonReply(200, searchJSON))
+	start := time.Now()
+	_, err := newTestClient(s).Search(context.Background(), SearchParams{Q: "x"})
+	var e *Error
+	if !errors.As(err, &e) || e.Status != 429 || e.Code != CodeDailyLimit || e.Retryable() || !strings.Contains(e.Message, "app.serpkite.com/billing") {
+		t.Fatalf("err = %v", err)
+	}
+	if d := time.Since(start); d > time.Second {
+		t.Fatalf("waited %s", d)
+	}
+	if n := len(s.requests()); n != 1 {
+		t.Fatalf("attempts = %d, want 1", n)
+	}
+}
+
 func TestNetworkErrorAndTimeout(t *testing.T) {
 	s := newServer(t, jsonReply(200, searchJSON))
 	url := s.URL

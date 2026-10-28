@@ -91,14 +91,14 @@ func (c *Client) AnswerStream(ctx context.Context, p AnswerParams, opts ...Reque
 			body, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 			res.Body.Close()
 			cancel()
-			retryable := res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500
-			if canRetry && retryable {
+			e := errorFromResponse(res.StatusCode, res.Header, body)
+			if canRetry && e.Retryable() {
 				if err := sleep(ctx, c.retryDelay(attempt, res.Header)); err != nil {
 					return nil, err
 				}
 				continue
 			}
-			return nil, errorFromResponse(res.StatusCode, res.Header, body)
+			return nil, e
 		}
 		if o.info != nil {
 			*o.info = responseInfo(res.StatusCode, res.Header)

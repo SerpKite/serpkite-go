@@ -45,8 +45,16 @@ func (e *Error) Error() string {
 // Unwrap returns the underlying transport error, if any.
 func (e *Error) Unwrap() error { return e.cause }
 
-// Retryable reports whether the failure is a rate limit, server error or network error.
+// CodeDailyLimit is the free daily limit (429 until 00:00 UTC, see its
+// Retry-After). Retrying can't help, so the client returns it at once.
+const CodeDailyLimit = "daily_limit_reached"
+
+// Retryable reports whether the failure is a rate limit, server error or
+// network error. The free daily limit is not retryable.
 func (e *Error) Retryable() bool {
+	if e.Code == CodeDailyLimit {
+		return false
+	}
 	return e.Status == http.StatusTooManyRequests || e.Status >= 500 || e.Code == "connection_error" || e.Code == "timeout"
 }
 
