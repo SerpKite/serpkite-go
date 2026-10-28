@@ -341,7 +341,7 @@ if serp.AIOverview != nil {
 }
 ```
 
-- Prices per answer: ChatGPT 5, Gemini 5, Copilot 3, AI Mode 3, Brave AI 2 credits (the same in
+- Prices per answer: ChatGPT 4, Gemini 3, Copilot 3, AI Mode 2, Brave AI 2 credits (the same in
   batches; `MaxAge` cache hits half). Failed, refused and empty answers are free.
 - Answers take 10-90 s: each attempt waits at least 120 s (raised from `WithTimeout`; bound it
   with `ctx`) and is retried only on 429 (a lost response is still billed). `Markdown` with an

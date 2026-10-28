@@ -24,7 +24,7 @@ func isAssistant(e Endpoint) bool {
 // ChatGPT asks ChatGPT as a logged-out user and returns its answer (Text,
 // Markdown), cited Sources, SearchQueries, Products, Places and the guest
 // Model. WebSearch (default true) makes it search the web; Country asks
-// from an exit in that country; Track adds Mentions. 5 credits.
+// from an exit in that country; Track adds Mentions. 4 credits.
 //
 // The AI assistant methods are billed even when the response is lost, so
 // they are retried only on 429 (failed, refused and empty answers are free),
@@ -35,7 +35,7 @@ func (c *Client) ChatGPT(ctx context.Context, p ChatGPTParams, opts ...RequestOp
 }
 
 // Gemini asks Google Gemini as a logged-out user: the answer with the
-// sources it grounded on (grounded answers take 40-90 s). 5 credits. See
+// sources it grounded on (grounded answers take 40-90 s). 3 credits. See
 // [Client.ChatGPT] for retries, timeouts and Markdown.
 func (c *Client) Gemini(ctx context.Context, p AssistantParams, opts ...RequestOption) (*AssistantResponse, error) {
 	return c.assistant(ctx, EndpointGemini, p.Prompt, p, opts)
@@ -49,7 +49,7 @@ func (c *Client) Copilot(ctx context.Context, p AssistantParams, opts ...Request
 }
 
 // AIMode asks Google AI Mode: the answer, cited sources and products.
-// Country is the country Google answers for. 3 credits. See [Client.ChatGPT]
+// Country is the country Google answers for. 2 credits. See [Client.ChatGPT]
 // for retries, timeouts and Markdown.
 func (c *Client) AIMode(ctx context.Context, p AssistantParams, opts ...RequestOption) (*AssistantResponse, error) {
 	return c.assistant(ctx, EndpointAIMode, p.Prompt, p, opts)
