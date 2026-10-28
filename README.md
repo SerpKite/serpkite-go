@@ -108,6 +108,8 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `Autocomplete` | `POST /v1/autocomplete` | `SearchParams` | `*AutocompleteResponse` (`Results[i].Value`) |
 | `Webpage` | `POST /v1/webpage` | `WebpageParams` (`URL`, `IncludeHTML`) | `*WebpageResponse` (`Markdown`, `Text`, `Metadata`) |
 | `Rank` | `POST /v1/rank` | `RankParams` (`Q`, `Domain`, `Num`: 10\|20\|30\|50\|100) | `*RankResponse` (`Position` or nil, `Matches`, `Checked`) |
+| `ChatGPT` | `POST /v1/chatgpt` | `ChatGPTParams` (`Prompt`, `WebSearch`, `Country`, `Track`, `IncludeHTML`) | `*AssistantResponse` |
+| `Gemini`, `Copilot`, `AIMode`, `BraveAI` | `POST /v1/gemini`, `/v1/copilot`, `/v1/ai_mode`, `/v1/brave_ai` | `AssistantParams` (`Prompt`, `Country`, `Language`, `Track`, `IncludeHTML`) | `*AssistantResponse` (`Text`, `Markdown`, `Sources`, `SearchQueries`, `Products`, `Places`, `Mentions`) |
 | `Answer` | `POST /v1/answer` | `AnswerParams` (`Q`, `Depth`: `DepthFast`\|`DepthStandard`, `NumSources` 1-5, `OutputSchema`, search options) | `*AnswerResponse` (`Answer`, `Citations`, `Results`, `Output`) |
 | `AnswerStream` | `POST /v1/answer` (SSE) | `AnswerParams` | `*AnswerStream` (`Next`, `Event`, `Err`, `Collect`, `Close`) |
 | `Extract` | `POST /v1/extract` | `ExtractParams` (`URLs` ≤ 20, `Format`, `Query`, `Highlights`, `Summary`, `OutputSchema`, `Prompt`, …) | `*ExtractResponse` (`Results`, `Failed`) |
@@ -304,6 +306,51 @@ if news.Answer != nil {
   carries `SummaryError` / `OutputError` instead. The default `Timeout` becomes 75 seconds with
   either.
 
+## AI assistants
+
+Ask ChatGPT, Gemini, Copilot (Bing Copilot Search), Google AI Mode or Brave's AI answer a prompt as
+a logged-out user and get the answer with the sources it cited, the searches it ran and the
+products and places it showed. `Track` lists brands and domains to look for; each comes back in
+`Mentions`.
+
+```go
+res, err := c.ChatGPT(ctx, serpkite.ChatGPTParams{
+	Prompt:  "What are the best CRMs for a 10-person startup?",
+	Country: "us", // ask from an exit in this country (prices and shops follow it)
+	Track:   []string{"hubspot.com", "Pipedrive"},
+})
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(res.Model, res.Markdown) // citations as [n](link), matching Sources[].Position
+for _, s := range res.Sources {
+	fmt.Println(s.Position, s.Cited, s.Domain)
+}
+for _, m := range res.Mentions {
+	// Mentioned: the text names it; Cited: a cited source matches it; TextPosition 0-1 (-1: not named)
+	fmt.Println(m.Term, m.Mentioned, m.Cited, m.Sources, m.TextPosition)
+}
+
+md, err := c.Markdown(ctx, serpkite.EndpointAIMode, serpkite.AssistantParams{Prompt: "how to remove a red wine stain from wool"})
+_, err = c.Gemini(ctx, serpkite.AssistantParams{Prompt: "Wie funktionieren Wärmepumpen?", Country: "de", Language: "de"})
+
+// Google's AI Overview on a normal search, when the page shows one
+serp, err := c.Search(ctx, serpkite.SearchParams{Q: "how do heat pumps work"})
+if serp.AIOverview != nil {
+	fmt.Println(serp.AIOverview.Text, serp.AIOverview.Sources)
+}
+```
+
+- Prices per answer: ChatGPT 5, Gemini 5, Copilot 3, AI Mode 3, Brave AI 2 credits (the same in
+  batches; `MaxAge` cache hits half). Failed, refused and empty answers are free.
+- Answers take 10-90 s: each attempt waits at least 120 s (raised from `WithTimeout`; bound it
+  with `ctx`) and is retried only on 429 (a lost response is still billed). `Markdown` with an
+  `Endpoint*` assistant constant follows the same rules.
+- `WebSearch` (default true; `serpkite.Bool(false)` lets ChatGPT decide) is ChatGPT only;
+  `Language` isn't taken by ChatGPT.
+- Run many prompts through `Batches.Create` with `Endpoint: serpkite.EndpointChatGPT`, or track an
+  answer over time with a monitor (see [Monitors](#monitors)).
+
 ## Research
 
 ```go
@@ -415,7 +462,19 @@ w, err := c.Monitors.Create(ctx, serpkite.MonitorCreateParams{
 })
 _, err = c.Monitors.Update(ctx, w.ID, serpkite.MonitorUpdateParams{Metadata: serpkite.ClearMetadata})
 err = c.Monitors.Delete(ctx, w.ID)
+
+// Ask an AI assistant every day and see who it cites (each run costs the endpoint's price)
+_, err = c.Monitors.Create(ctx, serpkite.MonitorCreateParams{
+	Endpoint: string(serpkite.EndpointChatGPT),
+	Prompt:   "What are the best CRMs for a 10-person startup?",
+	Track:    []string{"hubspot.com", "Pipedrive"},
+})
 ```
+
+An AI assistant monitor (`chatgpt`, `gemini`, `copilot`, `ai_mode`, `brave_ai`) reports every
+answer as one `serpkite.MonitorAnswer` (`Text`, `Markdown`, `Sources`, `NewSources` (links not seen
+in earlier runs), `SearchQueries`, `Products` and, with `Track`, `Mentions`); unmarshal it from
+`run.Results[0]` or the webhook's `NewResults[0]`. Its webhook carries `Prompt` instead of `Q`.
 
 Each search run costs what its search costs (1 credit per 10 results, `num` 100 is 7; empty and failed runs are free) and reports only results
 it hasn't seen before: as a signed `monitor.results` webhook (`serpkite.MonitorResultsEvent`; dedupe
@@ -505,8 +564,8 @@ searches are refunded, so they never cost credits.
 Requests are retried up to `WithMaxRetries` times (default 2) on `429`, `5xx`, network errors and
 timeouts, with exponential backoff (`500 ms · 2^attempt`, capped at 8 s) and jitter. A `Retry-After`
 header (seconds or HTTP date, capped at 60 s) takes precedence. Other `4xx` errors are never
-retried. `Batches.Create`, `Crawl`, `Research`, `Extract`, `Monitors.Create` and `Monitors.Run`
-retry only on `429`, so a lost response can never queue (and bill) the same work twice.
+retried. `Batches.Create`, `Crawl`, `Research`, `Extract`, `Answer`, the AI assistant methods,
+`Monitors.Create` and `Monitors.Run` retry only on `429`, so a lost response can never queue (and bill) the same work twice.
 `AnswerStream` retries only until the stream starts.
 
 ## Types

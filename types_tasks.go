@@ -181,8 +181,16 @@ type MonitorCreateParams struct {
 	Q string `json:"q,omitempty"`
 	// URL is the page to watch for content changes (Endpoint "webpage").
 	URL string `json:"url,omitempty"`
-	// Endpoint is "search" (default), "news" or "webpage" (1 credit per check;
-	// reports the page when its content changes, as a [MonitorPageChange]).
+	// Prompt is asked every run by AI assistant monitors (Endpoint
+	// "chatgpt", "gemini", "copilot", "ai_mode" or "brave_ai"), which report
+	// every answer as a [MonitorAnswer] and take Country, Language (not
+	// chatgpt), WebSearch (chatgpt) and Track.
+	Prompt    string   `json:"prompt,omitempty"`
+	WebSearch *bool    `json:"web_search,omitempty"`
+	Track     []string `json:"track,omitempty"`
+	// Endpoint is "search" (default), "news", "webpage" (1 credit per check;
+	// reports the page when its content changes, as a [MonitorPageChange]) or
+	// an AI assistant (the Endpoint* constants; each run costs its price).
 	Endpoint string `json:"endpoint,omitempty"`
 	// Metadata is your own JSON object (at most 2 KB), echoed on the monitor
 	// and in its webhooks.
@@ -216,7 +224,8 @@ var ClearMetadata = json.RawMessage("null")
 // zero fields are left unchanged. The search fields (Endpoint, Q, URL and the
 // search options) are merged into the saved search; a changed search makes
 // the next run report every result as new. Switching Endpoint between a
-// search ("search", "news") and "webpage" drops the other kind's fields.
+// search ("search", "news"), "webpage" and an AI assistant drops the other
+// kinds' fields.
 type MonitorUpdateParams struct {
 	Name            *string `json:"name,omitempty"`
 	Interval        string  `json:"interval,omitempty"`
@@ -229,9 +238,13 @@ type MonitorUpdateParams struct {
 	// Metadata replaces the monitor's metadata: a JSON object (for example
 	// from json.Marshal), or [ClearMetadata] to remove it. Nil leaves it unchanged.
 	Metadata json.RawMessage `json:"metadata,omitempty"`
-	// Endpoint is "search", "news" or "webpage".
+	// Endpoint is "search", "news", "webpage" or an AI assistant.
 	Endpoint string `json:"endpoint,omitempty"`
 	Q        string `json:"q,omitempty"`
+	// Prompt, WebSearch and Track change an AI assistant monitor's request.
+	Prompt    string   `json:"prompt,omitempty"`
+	WebSearch *bool    `json:"web_search,omitempty"`
+	Track     []string `json:"track,omitempty"`
 	// URL is the watched page (webpage monitors only).
 	URL            string   `json:"url,omitempty"`
 	Country        string   `json:"country,omitempty"`
@@ -247,10 +260,14 @@ type MonitorUpdateParams struct {
 }
 
 // MonitorSearch is the saved request a monitor reruns: a search (Q and
-// options) or, for webpage monitors, URL (and Country).
+// options), for webpage monitors URL (and Country), or for AI assistant
+// monitors Prompt (with Country, Language, WebSearch and Track).
 type MonitorSearch struct {
 	Q              string   `json:"q,omitempty"`
 	URL            string   `json:"url,omitempty"`
+	Prompt         string   `json:"prompt,omitempty"`
+	WebSearch      *bool    `json:"web_search,omitempty"`
+	Track          []string `json:"track,omitempty"`
 	Country        string   `json:"country,omitempty"`
 	Language       string   `json:"language,omitempty"`
 	Location       string   `json:"location,omitempty"`
@@ -333,8 +350,8 @@ type MonitorRun struct {
 	Error      *string `json:"error,omitempty"`
 	NewResults int     `json:"new_results"`
 	// Results are the new results ([OrganicResult]-shaped for search monitors,
-	// [NewsResult] for news, [MonitorPageChange] for webpage); nil when there
-	// were none or after 24 hours.
+	// [NewsResult] for news, [MonitorPageChange] for webpage, one
+	// [MonitorAnswer] for AI assistants); nil when there were none or after 24 hours.
 	Results     []json.RawMessage `json:"results,omitempty"`
 	CreditsUsed float64           `json:"credits_used"`
 	// WebhookStatus is delivered, failed, none (the monitor has no webhook)
@@ -406,17 +423,21 @@ type MonitorResultsEvent struct {
 	RunID    string `json:"run_id"`
 	Name     string `json:"name"`
 	Endpoint string `json:"endpoint"`
-	// Q is the saved query (empty for webpage monitors).
-	Q string `json:"q"`
+	// Q is the saved query (empty for webpage monitors, absent for AI
+	// assistant monitors).
+	Q string `json:"q,omitempty"`
 	// URL is the watched page (webpage monitors only).
 	URL string `json:"url,omitempty"`
+	// Prompt is the AI assistant monitor's prompt (instead of Q).
+	Prompt string `json:"prompt,omitempty"`
 	// Metadata is the monitor's metadata.
 	Metadata map[string]any `json:"metadata,omitempty"`
 	// FirstRun is the first run since the monitor was created or its search changed.
 	FirstRun bool      `json:"first_run"`
 	RunAt    time.Time `json:"run_at"`
 	// NewResults are results not seen in earlier runs: [OrganicResult]-shaped
-	// for search monitors, [NewsResult] for news, [MonitorPageChange] for webpage.
+	// for search monitors, [NewsResult] for news, [MonitorPageChange] for
+	// webpage, one [MonitorAnswer] for AI assistant monitors.
 	NewResults  []json.RawMessage `json:"new_results"`
 	CreditsUsed float64           `json:"credits_used"`
 }

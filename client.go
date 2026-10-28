@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.7.0"
+const Version = "0.8.0"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
@@ -175,11 +175,17 @@ func (c *Client) SearchMarkdown(ctx context.Context, p SearchParams, opts ...Req
 
 // Markdown calls any vertical with format=markdown and returns the Markdown.
 // params is the endpoint's params struct (SearchParams, PlaceParams,
-// ReviewsParams, WebpageParams) or a map[string]any.
+// ReviewsParams, WebpageParams, AssistantParams, ChatGPTParams) or a
+// map[string]any. AI assistant endpoints keep their retry and timeout rules
+// (see [Client.ChatGPT]).
 func (c *Client) Markdown(ctx context.Context, endpoint Endpoint, params any, opts ...RequestOption) (string, error) {
 	body, err := withField(params, "format", FormatMarkdown)
 	if err != nil {
 		return "", err
+	}
+	if isAssistant(endpoint) {
+		text, _, err := c.do(ctx, assistantCall("/v1/"+string(endpoint), body, opts, nil))
+		return text, err
 	}
 	return c.markdown(ctx, "/v1/"+string(endpoint), body, opts)
 }

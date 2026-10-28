@@ -366,6 +366,11 @@ type RequestEcho struct {
 	BoostDomains   []string `json:"boost_domains,omitempty"`
 	Highlights     bool     `json:"highlights,omitempty"`
 	IncludeAnswer  bool     `json:"include_answer,omitempty"`
+	// Prompt, WebSearch and IncludeHTML echo AI assistant and webpage requests
+	// (AI assistant responses use [AssistantEcho]).
+	Prompt      string `json:"prompt,omitempty"`
+	WebSearch   *bool  `json:"web_search,omitempty"`
+	IncludeHTML bool   `json:"include_html,omitempty"`
 }
 
 // ── Search ───────────────────────────────────────────────────────────────
@@ -450,7 +455,9 @@ type SearchResponse struct {
 	Places          []PlaceResult   `json:"places,omitempty"`
 	// Answer is set with [SearchParams].IncludeAnswer (nil when the model failed).
 	Answer *SearchAnswer `json:"answer,omitempty"`
-	Meta   Meta          `json:"meta"`
+	// AIOverview is Google's AI Overview when the page showed one.
+	AIOverview *AIOverview `json:"ai_overview,omitempty"`
+	Meta       Meta        `json:"meta"`
 }
 
 // ── Images, videos, news ─────────────────────────────────────────────────
@@ -828,7 +835,8 @@ const (
 type BatchCreateParams struct {
 	Endpoint Endpoint `json:"endpoint"`
 	// Requests holds 1-100 request bodies for Endpoint: SearchParams,
-	// PlaceParams, ReviewsParams, WebpageParams or map[string]any.
+	// PlaceParams, ReviewsParams, WebpageParams, ChatGPTParams,
+	// AssistantParams or map[string]any.
 	Requests []any `json:"requests"`
 	// WebhookURL receives each job's result (signed with X-SerpKite-Signature).
 	// Defaults to the account webhook.

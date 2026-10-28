@@ -163,6 +163,15 @@ func TestContract(t *testing.T) {
 		"ResearchResult.stats":    {prop("ResearchResult", "stats"), ResearchStats{}},
 		"ResearchTask":            {prop("ResearchTask"), ResearchTask{}},
 		"ResearchTask.progress":   {prop("ResearchTask", "progress"), ResearchProgress{}},
+		"AssistantRequest":        {prop("AssistantRequest"), AssistantParams{}},
+		"ChatGPTRequest":          {prop("ChatGPTRequest"), ChatGPTParams{}},
+		"AssistantEcho":           {prop("AssistantEcho"), AssistantEcho{}},
+		"AISource":                {prop("AISource"), AISource{}},
+		"AIProduct":               {prop("AIProduct"), AIProduct{}},
+		"Mention":                 {prop("Mention"), Mention{}},
+		"AssistantResponse":       {prop("AssistantResponse"), AssistantResponse{}},
+		"AIOverview":              {prop("AIOverview"), AIOverview{}},
+		"MonitorAnswer":           {prop("MonitorAnswer"), MonitorAnswer{}},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -195,6 +204,15 @@ func TestContract(t *testing.T) {
 	providers := []string{ProviderGoogle, ProviderBrave, ProviderBing, ProviderYahoo, ProviderDuckDuckGo, ProviderMojeek, ProviderWikipedia, ProviderYandex}
 	if p := s["Provider"]; p == nil || !slices.Equal(p.Enum, providers) {
 		t.Errorf("Provider constants %v differ from the contract enum %v", providers, p)
+	}
+
+	// The Endpoint constants match the batch endpoint enum.
+	endpoints := []string{string(EndpointSearch), string(EndpointImages), string(EndpointVideos), string(EndpointNews),
+		string(EndpointMaps), string(EndpointPlaces), string(EndpointPlace), string(EndpointReviews), string(EndpointShopping),
+		string(EndpointScholar), string(EndpointPatents), string(EndpointAutocomplete), string(EndpointWebpage),
+		string(EndpointChatGPT), string(EndpointGemini), string(EndpointCopilot), string(EndpointAIMode), string(EndpointBraveAI)}
+	if e := prop("BatchCreateRequest", "endpoint"); !slices.Equal(e.Enum, endpoints) {
+		t.Errorf("Endpoint constants %v differ from the contract enum %v", endpoints, e.Enum)
 	}
 
 	// Every response schema is covered.
