@@ -140,6 +140,9 @@ type RouteStep struct {
 type SearchParams struct {
 	// Q is the query (required).
 	Q string `json:"q"`
+	// IncludeImages (shopping) returns data: thumbnails in image_url on the
+	// cards with no image URL. They add up to a few hundred KB.
+	IncludeImages bool `json:"include_images,omitempty"`
 	// Country is an ISO 3166-1 alpha-2 code. API default "us".
 	Country string `json:"country,omitempty"`
 	// Language is the interface language (e.g. en, de, pt-br). API default "en".
