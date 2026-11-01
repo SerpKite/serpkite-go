@@ -297,7 +297,10 @@ type Meta struct {
 	// MissingPages lists pages of a num above 10 that could not be retrieved.
 	// Without it, a short result is all Google returned.
 	MissingPages []int `json:"missing_pages,omitempty"`
-	LatencyMs    int   `json:"latency_ms,omitempty"`
+	// SimilarResultsHidden is true when Google hid results very similar to
+	// those shown and ended the results early.
+	SimilarResultsHidden bool `json:"similar_results_hidden,omitempty"`
+	LatencyMs            int  `json:"latency_ms,omitempty"`
 	// LLM is the model behind the response's AI part (answers, include_answer).
 	LLM *LLMUsage `json:"llm,omitempty"`
 	// Warnings lists non-fatal problems, e.g. an include_answer that failed (and was refunded).
