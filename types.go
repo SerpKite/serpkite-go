@@ -300,7 +300,10 @@ type Meta struct {
 	// SimilarResultsHidden is true when Google hid results very similar to
 	// those shown and ended the results early.
 	SimilarResultsHidden bool `json:"similar_results_hidden,omitempty"`
-	LatencyMs            int  `json:"latency_ms,omitempty"`
+	// UnresolvedLinks counts the results whose LinkResolved is false. Such
+	// a response is not cached: a later request may get every destination.
+	UnresolvedLinks int `json:"unresolved_links,omitempty"`
+	LatencyMs       int `json:"latency_ms,omitempty"`
 	// LLM is the model behind the response's AI part (answers, include_answer).
 	LLM *LLMUsage `json:"llm,omitempty"`
 	// Warnings lists non-fatal problems, e.g. an include_answer that failed (and was refunded).
@@ -395,7 +398,8 @@ type Sitelink struct {
 type OrganicResult struct {
 	Position int    `json:"position"`
 	Title    string `json:"title"`
-	// Link is the resolved destination URL (never a Google redirect).
+	// Link is the resolved destination URL, never a google.com/url
+	// redirect; Google's /goto redirect only when LinkResolved is false.
 	Link string `json:"link"`
 	// Domain is the canonical host without www.
 	Domain        string            `json:"domain"`
@@ -415,6 +419,10 @@ type OrganicResult struct {
 	Highlights []Highlight `json:"highlights,omitempty"`
 	// Sources lists the providers that returned this result (EngineConsensus only).
 	Sources []string `json:"sources,omitempty"`
+	// LinkResolved is non-nil and false only when Link is still Google's
+	// google.com/goto redirect because Google did not release the
+	// destination in time; Domain is then the host Google displayed.
+	LinkResolved *bool `json:"link_resolved,omitempty"`
 }
 
 // AnswerBox is the featured answer.
@@ -505,6 +513,10 @@ type VideoResult struct {
 	Date     string `json:"date,omitempty"`
 	// PublishedAt is Date as ISO 8601 when it parses.
 	PublishedAt string `json:"published_at,omitempty"`
+	// LinkResolved is non-nil and false only when Link is still Google's
+	// google.com/goto redirect because Google did not release the
+	// destination in time; Domain is then the host Google displayed.
+	LinkResolved *bool `json:"link_resolved,omitempty"`
 }
 
 // VideosResponse is returned by [Client.Videos].
@@ -526,6 +538,10 @@ type NewsResult struct {
 	PublishedAt string `json:"published_at,omitempty"`
 	Source      string `json:"source,omitempty"`
 	ImageURL    string `json:"image_url,omitempty"`
+	// LinkResolved is non-nil and false only when Link is still Google's
+	// google.com/goto redirect because Google did not release the
+	// destination in time; Domain is then the host Google displayed.
+	LinkResolved *bool `json:"link_resolved,omitempty"`
 }
 
 // NewsResponse is returned by [Client.News].
