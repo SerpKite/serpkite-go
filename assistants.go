@@ -49,14 +49,14 @@ func (c *Client) Copilot(ctx context.Context, p AssistantParams, opts ...Request
 }
 
 // AIMode asks Google AI Mode: the answer, cited sources and products.
-// Country is the country Google answers for. 2 credits. See [Client.ChatGPT]
+// Country is the country Google answers for, Location the place. 2 credits. See [Client.ChatGPT]
 // for retries, timeouts and Markdown.
 func (c *Client) AIMode(ctx context.Context, p AssistantParams, opts ...RequestOption) (*AssistantResponse, error) {
 	return c.assistant(ctx, EndpointAIMode, p.Prompt, p, opts)
 }
 
 // BraveAI asks Brave Search's AI answer: cited sources, the searches it ran
-// and products. Country sets Brave's market. 2 credits. See [Client.ChatGPT]
+// and products. Country sets Brave's market, Location the place. 2 credits. See [Client.ChatGPT]
 // for retries, timeouts and Markdown.
 func (c *Client) BraveAI(ctx context.Context, p AssistantParams, opts ...RequestOption) (*AssistantResponse, error) {
 	return c.assistant(ctx, EndpointBraveAI, p.Prompt, p, opts)

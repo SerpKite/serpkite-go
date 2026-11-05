@@ -153,9 +153,11 @@ type ResearchParams struct {
 	Effort string `json:"effort,omitempty"`
 	// OutputSchema is a JSON Schema (at most 16 KB); the report is also
 	// returned as JSON in [ResearchResult].Output.
-	OutputSchema   any      `json:"output_schema,omitempty"`
-	Country        string   `json:"country,omitempty"`
-	Language       string   `json:"language,omitempty"`
+	OutputSchema any    `json:"output_schema,omitempty"`
+	Country      string `json:"country,omitempty"`
+	Language     string `json:"language,omitempty"`
+	// Location is the place the searches are for (as on Search).
+	Location       string   `json:"location,omitempty"`
 	IncludeDomains []string `json:"include_domains,omitempty"`
 	ExcludeDomains []string `json:"exclude_domains,omitempty"`
 	// WebhookURL receives the signed research.completed event (default: the account webhook).

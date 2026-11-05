@@ -184,7 +184,7 @@ type MonitorCreateParams struct {
 	// Prompt is asked every run by AI assistant monitors (Endpoint
 	// "chatgpt", "gemini", "copilot", "ai_mode" or "brave_ai"), which report
 	// every answer as a [MonitorAnswer] and take Country, Language (not
-	// chatgpt), WebSearch (chatgpt) and Track.
+	// chatgpt), Location (ai_mode and brave_ai), WebSearch (chatgpt) and Track.
 	Prompt    string   `json:"prompt,omitempty"`
 	WebSearch *bool    `json:"web_search,omitempty"`
 	Track     []string `json:"track,omitempty"`

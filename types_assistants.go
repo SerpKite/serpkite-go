@@ -24,6 +24,13 @@ type AssistantParams struct {
 	// Language is the interface language (e.g. "en", "de"); the answer
 	// follows the prompt's language.
 	Language string `json:"language,omitempty"`
+	// Location is the place the answer is for, e.g. "Austin, Texas, United
+	// States": local prompts ("best pizza near me") answer for it. AIMode and
+	// BraveAI only (Gemini and Copilot answer 400). Country defaults to its
+	// country; a place the assistant can't find is a 400 (free).
+	Location string `json:"location,omitempty"`
+	// UULE is Google's encoded location, used like Location (AIMode and BraveAI only).
+	UULE string `json:"uule,omitempty"`
 	// Track lists brands ("Acme") and domains ("acme.com", subdomains match),
 	// at most 20, to check the answer for; each comes back in
 	// [AssistantResponse].Mentions.
@@ -64,6 +71,9 @@ type AssistantEcho struct {
 	Country  string `json:"country,omitempty"`
 	// Language is not echoed by chatgpt.
 	Language string `json:"language,omitempty"`
+	// Location and UULE are echoed by ai_mode and brave_ai when set.
+	Location string `json:"location,omitempty"`
+	UULE     string `json:"uule,omitempty"`
 	// WebSearch is echoed by chatgpt only.
 	WebSearch   *bool `json:"web_search,omitempty"`
 	IncludeHTML bool  `json:"include_html,omitempty"`
