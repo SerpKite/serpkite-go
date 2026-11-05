@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the SDK version, sent in the User-Agent.
-const Version = "0.8.2"
+const Version = "0.9.0"
 
 // DefaultBaseURL is the production API.
 const DefaultBaseURL = "https://api.serpkite.com"
@@ -267,6 +267,14 @@ func (c *Client) Webpage(ctx context.Context, p WebpageParams, opts ...RequestOp
 // Rank finds the position of a domain for a keyword in the top Num results (default 100).
 func (c *Client) Rank(ctx context.Context, p RankParams, opts ...RequestOption) (*RankResponse, error) {
 	return post[RankResponse](ctx, c, "/v1/rank", p, opts)
+}
+
+// Resolve returns the destinations of results that came back with
+// LinkResolved false (their Link is still Google's /goto redirect): pass
+// those links, up to 100. A pending link has RetryAfter seconds to wait.
+// Free.
+func (c *Client) Resolve(ctx context.Context, links []string, opts ...RequestOption) (*ResolveResponse, error) {
+	return post[ResolveResponse](ctx, c, "/v1/resolve", ResolveParams{Links: links}, opts)
 }
 
 // Account returns the balance, limits and this month's usage of the key's account.

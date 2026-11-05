@@ -108,6 +108,7 @@ vertical-specific extras and `Meta` (`RequestID`, `CreditsUsed`, `Cached`, `Late
 | `Autocomplete` | `POST /v1/autocomplete` | `SearchParams` | `*AutocompleteResponse` (`Results[i].Value`) |
 | `Webpage` | `POST /v1/webpage` | `WebpageParams` (`URL`, `IncludeHTML`) | `*WebpageResponse` (`Markdown`, `Text`, `Metadata`) |
 | `Rank` | `POST /v1/rank` | `RankParams` (`Q`, `Domain`, `Num`: 10\|20\|30\|50\|100) | `*RankResponse` (`Position` or nil, `Matches`, `Checked`) |
+| `Resolve` | `POST /v1/resolve` | `[]string`: `Link` values of results with `LinkResolved` false | `*ResolveResponse` (`Results[].Status`/`Destination`, `RetryAfter`; free) |
 | `ChatGPT` | `POST /v1/chatgpt` | `ChatGPTParams` (`Prompt`, `WebSearch`, `Country`, `Track`, `IncludeHTML`) | `*AssistantResponse` |
 | `Gemini`, `Copilot`, `AIMode`, `BraveAI` | `POST /v1/gemini`, `/v1/copilot`, `/v1/ai_mode`, `/v1/brave_ai` | `AssistantParams` (`Prompt`, `Country`, `Language`, `Track`, `IncludeHTML`) | `*AssistantResponse` (`Text`, `Markdown`, `Sources`, `SearchQueries`, `Products`, `Places`, `Mentions`) |
 | `Answer` | `POST /v1/answer` | `AnswerParams` (`Q`, `Depth`: `DepthFast`\|`DepthStandard`, `NumSources` 1-5, `OutputSchema`, search options) | `*AnswerResponse` (`Answer`, `Citations`, `Results`, `Output`) |

@@ -968,3 +968,36 @@ type errorEnvelope struct {
 		RequestID string `json:"request_id,omitempty"`
 	} `json:"error"`
 }
+
+// ResolveParams is the body of [Client.Resolve].
+type ResolveParams struct {
+	// Links are the Link values of results with LinkResolved false.
+	Links []string `json:"links"`
+}
+
+// ResolveResponse is returned by [Client.Resolve].
+type ResolveResponse struct {
+	Results []ResolvedLink `json:"results"`
+	// RetryAfter is how many seconds to wait before asking again for the
+	// pending links (0 when none is pending).
+	RetryAfter int         `json:"retry_after,omitempty"`
+	Meta       ResolveMeta `json:"meta"`
+}
+
+// ResolveMeta is [ResolveResponse].Meta.
+type ResolveMeta struct {
+	RequestID   string  `json:"request_id"`
+	CreditsUsed float64 `json:"credits_used"`
+}
+
+// ResolvedLink is one link's state in a [ResolveResponse].
+type ResolvedLink struct {
+	Link string `json:"link"`
+	// Status is resolved, pending (ask again after RetryAfter), failed
+	// (Google never released it) or unknown (not a link SerpKite returned
+	// in the last 24 hours).
+	Status string `json:"status"`
+	// Destination and Domain are set when Status is resolved.
+	Destination string `json:"destination,omitempty"`
+	Domain      string `json:"domain,omitempty"`
+}
