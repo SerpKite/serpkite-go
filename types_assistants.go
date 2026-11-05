@@ -27,7 +27,8 @@ type AssistantParams struct {
 	// Location is the place the answer is for, e.g. "Austin, Texas, United
 	// States": local prompts ("best pizza near me") answer for it. AIMode and
 	// BraveAI only (Gemini and Copilot answer 400). Country defaults to its
-	// country; a place the assistant can't find is a 400 (free).
+	// country. Use "City, Region, Country": BraveAI answers a place it can't
+	// find with a 400 (free); AIMode needs a name Google knows.
 	Location string `json:"location,omitempty"`
 	// UULE is Google's encoded location, used like Location (AIMode and BraveAI only).
 	UULE string `json:"uule,omitempty"`
