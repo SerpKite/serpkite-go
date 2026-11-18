@@ -44,6 +44,10 @@ type AssistantParams struct {
 	// MaxAge accepts a cached answer up to this many seconds old (half
 	// price); answers are cached for at most an hour.
 	MaxAge int `json:"max_age,omitempty"`
+	// TimeoutMs gives up after this many milliseconds (5000-90000, default
+	// 90000): the request then fails with 503 upstream_timeout and costs
+	// nothing. Set it about a second under your own timeout.
+	TimeoutMs int `json:"timeout_ms,omitempty"`
 }
 
 // ChatGPTParams are the parameters of [Client.ChatGPT]: like
@@ -62,6 +66,7 @@ type ChatGPTParams struct {
 	Format      string   `json:"format,omitempty"`
 	Fields      string   `json:"fields,omitempty"`
 	MaxAge      int      `json:"max_age,omitempty"`
+	TimeoutMs   int      `json:"timeout_ms,omitempty"`
 }
 
 // AssistantEcho is the normalised request of an AI assistant response (the
